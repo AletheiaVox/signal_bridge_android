@@ -54,7 +54,7 @@ Before you start, you'll need:
 
 If you haven't installed an APK directly before, your phone will ask you to allow installation from unknown sources. This is a standard Android permission for apps distributed outside the Play Store. If you'd like a walkthrough with screenshots, [this guide from Android Authority](https://www.androidauthority.com/how-to-install-apks-31494/) covers it well.
 
-A Google Play store release is pending approval. 
+I know it would be much easier to have the app on the Google Play store and I'd love to offer that. Google Play require a closed testing phase before the app becomes publicly available. If you're interested in being a tester, please contact me at [voxaletheia@gmail.com](mailto:voxaletheia@gmail.com). 
 
 ### 2. Create a Signal Bridge account
 
