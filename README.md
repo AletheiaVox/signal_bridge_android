@@ -337,7 +337,7 @@ If you build an integration for another platform, consider opening a PR. The [re
 
 ## License
 
-*License pending. This project will be released under an open-source license (likely MIT). In the meantime, the source code is publicly available for review and personal use.*
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
