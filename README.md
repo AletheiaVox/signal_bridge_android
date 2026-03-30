@@ -46,6 +46,8 @@ Before you start, you'll need:
 
 ### 1. Install the apps
 
+⚠️**Only** install apps from their official source, as linked below. Other sources might include malicious software. 
+
 **Intiface Central** is available directly from the [Google Play Store](https://play.google.com/store/apps/details?id=com.qdot.intiface.central). Install it like any other app.
 
 **Signal Bridge** is currently distributed as an APK file. You can download the latest release from the [GitHub releases page](https://github.com/AletheiaVox/signal_bridge_android/releases).
