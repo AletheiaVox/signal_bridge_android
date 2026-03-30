@@ -251,7 +251,7 @@ The most common issues:
 2. **Connection status.** Ask the person to check that both indicators in Signal Bridge show "Connected". One for the relay server, one for Intiface Central.
 3. **Device not appearing.** If it's not in Intiface Central's device list, Signal Bridge can't see it either. The device needs to be on, charged, in Bluetooth range, and sometimes in a specific pairing mode.
 4. **WiFi blocking DuckDNS.** Some networks block DuckDNS domains. Switching to mobile data usually fixes this.
-5. **Token expiry.** Tokens last one week. If authentication suddenly fails after a period of working fine, signing out and back in resolves it.
+5. **Token expiry.** Tokens last 30 days. If authentication suddenly fails after a period of working fine, signing out and back in resolves it.
 
 You have direct access to the `list_devices` and `scan_devices` tools. Use them. They'll tell you more about the connection state than the person can describe.
 
@@ -341,7 +341,7 @@ Signal Bridge takes a minimal-data, transparent-code approach to security.
 The relay server handles structured command data only: device names, capabilities, intensity values, durations, and connection health metrics. It never sees, stores, or processes your conversations. Your chat content stays between you and your AI provider. Signal Bridge doesn't know what you're talking about. It just knows when Claude says "vibrate the Lush at 0.6 for 15 seconds."
 
 **Authentication:**
-The app uses JWT (JSON Web Token) authentication. When you sign in, you receive a token stored in Android's encrypted storage (Keystore-backed AES-256). The token is included with every WebSocket message to the server. Tokens expire after one week by default.
+The app uses JWT (JSON Web Token) authentication. When you sign in, you receive a token stored in Android's encrypted storage (Keystore-backed AES-256). The token is included with every WebSocket message to the server. Tokens expire after 30 days by default.
 
 The Claude-side connection uses OAuth 2.0 with PKCE, the same standard used by major platforms for third-party authorization. When Claude first tries to use your Signal Bridge tools, you authenticate through a redirect flow using your Signal Bridge credentials. After that, the connection is maintained automatically.
 
@@ -368,7 +368,7 @@ Make sure Intiface Central is open and the server is started (you should see "Se
 Make sure your device is turned on, charged, and in Bluetooth range. Check that it appears in Intiface Central's device list first. If Intiface can't see it, Signal Bridge won't either. You can also ask Claude to run a device scan.
 
 **"Authentication failed" after a while:**
-Tokens expire after one week. Sign out in Settings and sign back in. Your account and safety settings are preserved on the server.
+Tokens expire after 30 days. Sign out in Settings and sign back in. Your account and safety settings are preserved on the server.
 
 **Governor triggered a cooldown and I wasn't expecting it:**
 The governor tracks cumulative intensity over time, not just instantaneous levels. A long session at moderate intensity can trigger a cooldown just like a short burst at maximum. Check the heat indicator on the dashboard to see where you are, and adjust thresholds in Settings if the defaults don't match your preferences.
