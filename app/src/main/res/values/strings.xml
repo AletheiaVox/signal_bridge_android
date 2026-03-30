@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Signal Bridge</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Signal Bridge Relay</string>
+    <string name="notification_channel_description">Shows relay connection status and emergency stop button</string>
+    <string name="notification_connecting">Signal Bridge — Connecting…</string>
+    <string name="notification_connected">Signal Bridge — Connected (%1$d devices)</string>
+    <string name="notification_cooldown">COOLDOWN — %1$ds remaining</string>
+    <string name="notification_reconnecting">Signal Bridge — Reconnecting…</string>
+    <string name="notification_stop_all">STOP ALL</string>
+
+    <!-- Accessibility Service -->
+    <string name="accessibility_service_description">Allows Signal Bridge to use volume buttons as an emergency stop during active sessions. This service only intercepts key events — it does not read screen content or control other apps.</string>
+
+    <!-- Auth -->
+    <string name="login_title">Sign In</string>
+    <string name="register_title">Create Account</string>
+    <string name="username_label">Username</string>
+    <string name="password_label">Password</string>
+    <string name="confirm_password_label">Confirm Password</string>
+    <string name="login_button">Sign In</string>
+    <string name="register_button">Create Account</string>
+    <string name="switch_to_register">Don\'t have an account? Create one</string>
+    <string name="switch_to_login">Already have an account? Sign in</string>
+    <string name="server_url_label">Server URL</string>
+    <string name="advanced_settings">Advanced</string>
+
+    <!-- Dashboard -->
+    <string name="connect_button">Connect</string>
+    <string name="disconnect_button">Disconnect</string>
+    <string name="stop_all_button">STOP ALL</string>
+    <string name="no_devices">No devices connected</string>
+    <string name="intiface_not_running">Can\'t reach Intiface Central.\nMake sure it\'s running with the server started.</string>
+    <string name="open_intiface">Open Intiface Central</string>
+    <string name="install_intiface">Install Intiface Central</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="safety_settings">Safety</string>
+    <string name="connection_settings">Connection</string>
+    <string name="safety_governor_enabled">Safety Governor</string>
+    <string name="heat_limit_label">Heat Limit</string>
+    <string name="cooldown_duration_label">Cooldown Duration</string>
+    <string name="checkin_interval_label">Check-in Interval</string>
+    <string name="volume_stop_enabled">Volume Button Emergency Stop</string>
+    <string name="about_title">About</string>
+    <string name="sign_out">Sign Out</string>
+
+    <!-- States -->
+    <string name="state_disconnected">Disconnected</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="state_idle">Connected</string>
+    <string name="state_active">Active</string>
+    <string name="state_cooldown">Cooldown</string>
+    <string name="state_error">Error</string>
+</resources>

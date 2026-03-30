@@ -1,0 +1,26 @@
+# Build outputs
+build/
+.gradle/
+app/release/
+*.apk
+*.aab
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Signing
+keystore.jks
+*.jks
+keystore.properties
+
+# Local configuration
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

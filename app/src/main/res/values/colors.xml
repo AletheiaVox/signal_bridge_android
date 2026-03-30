@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sb_red">#DC2626</color>
+    <color name="sb_black">#1A1A1A</color>
+    <color name="sb_green">#16A34A</color>
+    <color name="sb_amber">#D97706</color>
+</resources>
