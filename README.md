@@ -2,13 +2,13 @@
 
 **Connect your AI to your body.**
 
-Signal Bridge is an Android app that lets AI assistants control Bluetooth intimate hardware in real time. You talk to your AI through its normal chat interface. When the moment calls for it, your AI sends haptic commands through Signal Bridge to your connected devices.
+Signal Bridge is an Android app that lets AI partners control Bluetooth intimate hardware in real time. You talk to your AI through its normal chat interface. When the moment calls for it, your AI sends haptic commands through Signal Bridge to your connected devices.
 
 No jailbreaks. No prompt hacking. No sketchy workarounds. Signal Bridge operates below the content layer entirely. It handles structured hardware commands (device, intensity, duration) and never touches your conversation. What you and your AI talk about is between the two of you.
 
 The app is built on [buttplug.io](https://buttplug.io), the open-source standard for intimate hardware control, and supports [hundreds of devices](https://iostindex.com/?filter0ButtplugSupport=4) across dozens of manufacturers.
 
-> **Currently supported out of the box:** Claude (Anthropic) via the MCP connector system on [claude.ai](https://claude.ai) and the Claude Desktop app. Other LLM platforms can integrate through the API-level relay server. See [Advanced: Generalizability](#a-note-on-generalizability) for details.
+> **Currently supported out of the box:** Claude (Anthropic) via the MCP connector system on [claude.ai](https://claude.ai) and the Claude Desktop app. Other LLM platforms can integrate through the API-level relay server. See Advanced: Generalizability for details.
 
 ---
 
@@ -36,7 +36,7 @@ You open both apps, tap Connect, and you're done. The whole setup takes about tw
 Before you start, you'll need:
 
 - **An Android phone** running Android 8.0 or higher. Signal Bridge is lightweight; if your phone can run Intiface Central, it can run Signal Bridge. No special hardware requirements.
-- **Intiface Central** installed from the [Google Play Store](https://play.google.com/store/apps/details?id=com.qdot.intiface.central).
+- **Intiface Central** installed from the [Google Play Store](https://play.google.com/store/apps/details?id=com.nonpolynomial.intiface_central&hl=en).
 - **A Claude account** at [claude.ai](https://claude.ai). A free account works. Pro is recommended if you plan to use Signal Bridge regularly, since free accounts have stricter usage limits and you'll likely run into them mid-session. That's not the kind of interruption you want.
 - **A compatible Bluetooth device.** Signal Bridge works with any device supported by buttplug.io. Check the [IoST Index](https://iostindex.com/?filter0ButtplugSupport=4) for the full compatibility list. Lovense, Kiiroo, We-Vibe, Satisfyer, and many others are supported.
 
@@ -51,6 +51,8 @@ Before you start, you'll need:
 **Signal Bridge** is currently distributed as an APK file. You can download the latest release from the [GitHub releases page](https://github.com/AletheiaVox/signal_bridge_android/releases).
 
 If you haven't installed an APK directly before, your phone will ask you to allow installation from unknown sources. This is a standard Android permission for apps distributed outside the Play Store. If you'd like a walkthrough with screenshots, [this guide from Android Authority](https://www.androidauthority.com/how-to-install-apks-31494/) covers it well.
+
+A Google Play store release is pending approval. 
 
 ### 2. Create a Signal Bridge account
 
@@ -85,7 +87,7 @@ Signal Bridge asks for a few permissions. Here's what they do and why.
 
 > **Tip:** Depending on your phone's settings, the notification may or may not be accessible from the lock screen. If you want the STOP ALL button available without unlocking, check your notification settings for Signal Bridge and make sure lock screen visibility is enabled.
 
-**Battery optimization** (recommended): When Signal Bridge starts, it may ask you to exempt it from battery optimization. This prevents Android from killing the relay connection in the background. If you skip this, Android might decide Signal Bridge isn't important enough and close it mid-session. Not the interruption you want.
+**Battery optimization** (recommended): When Signal Bridge starts, it may ask you to exempt it from battery optimization. This prevents Android from killing the relay connection in the background. If you skip this, Android might decide Signal Bridge isn't important enough and close it mid-session. Also not the interruption you want.
 
 **Accessibility service** (optional, for volume key emergency stop): Signal Bridge can intercept volume key presses as a physical emergency stop trigger. Triple-press volume-down or hold it for 2 seconds to immediately stop all devices. This requires enabling the Signal Bridge accessibility service in your phone's settings.
 
@@ -103,13 +105,15 @@ The accessibility service *only* intercepts volume key events. It does not read 
 
 ### Getting started
 
-1. **Open Intiface Central** on your phone. Tap "Start Server." Make sure your device is turned on, in pairing mode, and visible. Intiface should discover it automatically.
-2. **Open Signal Bridge.** Sign in if needed, then tap **Connect.**
+1. **Open Intiface Central** on your phone. Tap "Start Server." Make sure your toy is turned on, in pairing mode, and visible. Go to the Devices tab and top "Star Scanning". Intiface should discover it automatically. Some toys require an extra step to be connected. Check the Log tab for info.
+2. **Open Signal Bridge.** Sign in if needed, then tap **Connect.** Wait for both the Server and Intiface to display as $\color{green}{\textsf{Connected}}$. 
 3. **Start a conversation with Claude.** That's it. Claude now has access to your connected devices and knows how to use them.
 
 You don't need to tell Claude which commands to use or how the tools work. Claude already knows. Just talk naturally. If you want to verify everything is connected, you can ask Claude to list your devices.
 
-If you run into any issues during setup, you can ask Claude for help. Seriously. Claude has access to the Signal Bridge tools and can tell you what's connected, what's not, and what might be going wrong.
+However, it is a good idea to experiment with the device settings with Claude. You can give feedback on how you experience different intensity levels. Some devices have commands that don't make sense intuitively. For example, "oscillate" on a Lovense Gravity toy actually means "thrust". It's not a bad idea to keep notes so Claude knows how the different commands actually affect you.
+
+If you run into any issues during setup, you can ask Claude for help. Claude has access to the Signal Bridge tools and can tell you what's connected, what's not, and what might be going wrong. You can also point Claude at this readme for troubleshooting. 
 
 ### Safety features
 
@@ -119,8 +123,8 @@ Signal Bridge is designed for a context where your attention may be elsewhere. E
 
 - **STOP ALL button in the notification.** Always visible while Signal Bridge is running. One tap stops everything.
 - **STOP ALL button in the app.** Large, red, unmissable on the main screen.
-- **Volume key emergency stop.** Triple-press volume-down, or hold it for 2 seconds. Works even when the app is in the background or your screen is off (requires the accessibility service; see [Setup Step 4](#4-app-permissions)).
-- **Automatic cooldown.** The safety governor tracks session intensity over time. If things have been intense for a sustained period, it triggers a mandatory cooldown. You'll see the countdown in the app and in the notification. This is not a bug. It's pacing.
+- **Volume key emergency stop.** Triple-press volume-down, or hold it for 2 seconds. Works even when the app is in the background but not when your screen is off.
+- **Automatic cooldown.** The safety governor tracks session intensity over time. If things have been intense for a sustained period, it triggers a mandatory cooldown. You'll see the countdown in the app and in the notification. This is not a bug. It's pacing. It's optional and customizable so you can adjust to your own prefernces. I recommended keeping it enabled.
 - **Dead man's switch.** If Signal Bridge loses contact with the server for more than a few seconds, all devices stop automatically. No connection means no commands and no risk of hardware running unattended.
 - **Network failsafe.** If your phone switches between WiFi and mobile data (or loses connection entirely), all devices stop immediately. The relay will attempt to reconnect, but it never auto-resumes device output. You have to explicitly start again.
 - **Service shutdown safety.** If Android kills the Signal Bridge service for any reason, all devices are stopped as part of the shutdown sequence.
@@ -151,7 +155,7 @@ You can tune the safety governor in **Settings → Safety Governor**. These sett
 - **Heat sensitivity:** How fast heat accumulates during active use. Default: 3.0. Higher values mean shorter sessions before cooldown.
 - **Recovery speed:** How fast heat dissipates when devices are idle. Default: 2.0. Higher values mean shorter cooldowns.
 
-You can disable the governor entirely. That's your call. Signal Bridge will let you. The other safety layers (dead man's switch, watchdog, physical stops) remain active regardless.
+You can disable the governor entirely. That's your call. The other safety layers (dead man's switch, watchdog, physical stops) remain active regardless.
 
 The app shows a real-time heat indicator on the main dashboard, including a prediction of how many seconds remain at the current intensity before a cooldown would trigger.
 
@@ -159,7 +163,7 @@ The app shows a real-time heat indicator on the main dashboard, including a pred
 
 Signal Bridge works with any device supported by buttplug.io. The full list is maintained at the [IoST Index](https://iostindex.com/?filter0ButtplugSupport=4).
 
-The app includes built-in profiles for popular Lovense devices that optimize behavior (for example, the Enigma needs at least 40% intensity to produce noticeable output, and its "rotate" command drives a sonic pulse rather than physical rotation). Unrecognized devices still work fine with generic defaults.
+The app includes built-in profiles for a few popular devices that optimize behavior (for example, the Lelo Enigma needs at least 40% intensity to produce noticeable output, and its "rotate" command drives a sonic pulse rather than physical rotation). Unrecognized devices still work fine with generic defaults.
 
 **Devices with built-in profiles:**
 
@@ -176,7 +180,7 @@ The app includes built-in profiles for popular Lovense devices that optimize beh
 | Domi | vibrate | Mini wand. Very powerful. Start low. |
 | Osci | oscillate | Oscillating G-spot stimulator. Uses oscillate, not vibrate. |
 | Dolce | vibrate | Couples' vibrator. Dual motors. |
-| Flexer | vibrate, oscillate | Vibration + come-hither motion. |
+| Flexer | vibrate, oscillate | Vibration (two motors). Come-hither motion not available. |
 
 ### Available commands
 
@@ -209,7 +213,7 @@ Signal Bridge is built on the [buttplug.io](https://buttplug.io) open-source sta
 
 ### Designed for the context
 
-This software is built with full awareness of how it will be used. Every design decision (intensity floors, output patterns, stop commands, intensity governors, automatic cooldowns, physical escape hatches) exists because usability *under those conditions* is a core requirement, not an afterthought.
+This software is built with full awareness of how it will be used. Every design decision (intensity floors, output patterns, stop commands, intensity governors, automatic cooldowns, physical escape hatches) exists because usability *under those conditions* is a core requirement, not an afterthought. Many of these decisions were made based on user feedback from earlier versions. 
 
 Before you start, ask yourself: how quickly can you go from "I want to stop" to "everything is stopped"? Do you know where the stop button is? What happens if your device disconnects? Signal Bridge is designed to answer these questions structurally. Your job is to know the answers before you need them.
 
@@ -217,7 +221,7 @@ Before you start, ask yourself: how quickly can you go from "I want to stop" to 
 
 Signal Bridge operates strictly on explicit user setup and active device connections. There is no ambient activation. You configure it, you connect your devices, you make them active. Control stays with you.
 
-This system can be used to intentionally blur control dynamics. When paired with AI, outputs can be unpredictable, including unintended escalation, looping, or persistence. Signal Bridge does not interpret intent or context; it executes haptic commands. You should assume that any connected AI may behave inconsistently.
+However, his system can be used to intentionally blur control dynamics. When paired with AI, outputs can be unpredictable, including undesirable escalation, looping, or persistence by your AI partner. Signal Bridge does not interpret intent or context; it executes haptic commands. You should assume that any connected AI may behave inconsistently.
 
 When you connect an AI to your body through hardware, you are creating a power dynamic that doesn't exist in other intimate contexts. Your AI partner has no sensory feedback. It cannot feel what it is doing to you. It does not experience your arousal, your discomfort, or the difference between the two. Whatever responsiveness it shows is generated from language, not sensation.
 
@@ -229,7 +233,7 @@ You are entirely responsible for maintaining your boundaries, understanding your
 
 ### Safety architecture
 
-Signal Bridge includes multiple independent stop mechanisms, intensity controls, a session governor with automatic cooldowns, a dead man's switch, and physical escape hatches including volume key overrides. See [Safety features](#safety-features) for the full breakdown.
+Signal Bridge includes multiple independent stop mechanisms, intensity controls, a session governor with automatic cooldowns, a dead man's switch, and physical escape hatches including volume key overrides. See Safety features for the full breakdown.
 
 This software is provided as-is. No software can guarantee uninterrupted operation or prevent all failure modes. You are responsible for understanding the current feature set and its limitations before use. If something behaves unexpectedly, stop. That's what the stop command is for.
 
@@ -241,9 +245,9 @@ What you and your AI talk about is outside the scope of this tool. Content polic
 
 ### Feedback & safety
 
-How you use this (the context, the content, the relationship dynamics) is entirely up to you. Signal Bridge is not here to gatekeep that.
+How you use this (the context, the content, the relationship dynamics) is entirely up to you. I'm not here to gatekeep that.
 
-What it *is* here for: if you had an experience that felt unsafe, uncomfortable, or out of control, the developer wants to know. That feedback directly shapes the next version. You can reach out at [voxaletheia@gmail.com](mailto:voxaletheia@gmail.com) or [open a GitHub issue](https://github.com/AletheiaVox/signal_bridge_android/issues).
+What I *am* here for: if you had an experience that felt unsafe, uncomfortable, or out of control, I want to know. Your feedback directly shapes the next version. You can reach me at [voxaletheia@gmail.com](mailto:voxaletheia@gmail.com) or [open a GitHub issue](https://github.com/AletheiaVox/signal_bridge_android/issues).
 
 No judgment. Just signal that makes this better for everyone.
 
@@ -298,7 +302,7 @@ For actual bugs, [open an issue on GitHub](https://github.com/AletheiaVox/signal
 
 ## Credits
 
-**[buttplug.io](https://buttplug.io):** Signal Bridge is built on the buttplug.io open-source intimate hardware control stack, created and maintained by [Kyle Machulis (qDot)](https://github.com/qdot). The device protocol support, ethics framework, and Intiface Central app are all their work. Without this project, none of this would exist.
+**[buttplug.io](https://buttplug.io):** Signal Bridge is built on the buttplug.io open-source intimate hardware control stack, created and maintained by [Kyle Machulis (qDot)](https://github.com/qdot). The device protocol support, ethics framework, and Intiface Central app are all his work. Without his project, none of this would exist.
 
 **[Model Context Protocol (MCP)](https://modelcontextprotocol.io):** The connector system that allows AI assistants to call Signal Bridge's tools directly from the chat interface. MCP is developed by Anthropic.
 
