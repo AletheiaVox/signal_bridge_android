@@ -28,7 +28,7 @@ The app is built on [buttplug.io](https://buttplug.io), the open-source standard
 
 Here's what it looks like:
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8bb8bea3-7469-41c5-b7d2-6fa554076c4c" width="280" alt="Dashboard"> <img src="https://github.com/user-attachments/assets/b6e88e66-4bf0-402e-91a2-d5b6a445899f" width="280" alt="Settings"> <img src="https://github.com/user-attachments/assets/c71116b4-a4cf-4460-841b-19f1447bef6e" width="280" alt="Settings">
+  <img src="https://github.com/user-attachments/assets/8bb8bea3-7469-41c5-b7d2-6fa554076c4c" width="280" alt="Dashboard"> <img src="https://github.com/user-attachments/assets/9d617fc1-56ac-49d9-ae73-5338e393e4ec" width="280" alt="Settings"> <img src="https://github.com/user-attachments/assets/1b3a2012-1cd0-425b-96f5-1b9d2b0dcce3" width="280" alt="Settings (continued)">
 </p>
 
 ---
@@ -114,13 +114,19 @@ Signal Bridge asks for a few permissions. Here's what they do and why.
 
 **Battery optimization** (recommended): When Signal Bridge starts, it may ask you to exempt it from battery optimization. This prevents Android from killing the relay connection in the background. If you skip this, Android might decide Signal Bridge isn't important enough and close it mid-session. Also not the interruption you want.
 
-**Accessibility service** (optional, for volume key emergency stop): Signal Bridge can intercept volume key presses as a physical emergency stop trigger. Triple-press volume-down or hold it for 2 seconds to immediately stop all devices. This works even when the app is in the background.
+**Accessibility service** (optional, for volume key emergency stop): Signal Bridge can intercept volume key presses as a physical emergency stop trigger. Triple-press volume-down or hold it for 2 seconds to immediately stop all devices. This works even when the app is in the background but not when your screen is off. 
 
 To enable it:
 1. Open your phone's **Settings**
 2. Navigate to **Accessibility** (the exact location varies by manufacturer)
 3. Find **Signal Bridge** in the list of installed services
 4. Toggle it on
+
+If the app is denied access on this screen, you can still work around that: 
+1. Open your phone's **Settings**
+2. Navigate to **Apps**
+3. Find **Signal Bridge**
+4. Tap the three dots in the right hand corner and enable restricted settings
 
 The accessibility service *only* intercepts volume key events. It does not read your screen, monitor other apps, or access anything else. The notification STOP ALL button and the in-app stop button work regardless of whether this is enabled.
 
