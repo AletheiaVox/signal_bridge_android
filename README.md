@@ -26,6 +26,11 @@ The app is built on [buttplug.io](https://buttplug.io), the open-source standard
 
 > **Currently supported out of the box:** Claude (Anthropic) via the MCP connector system on [claude.ai](https://claude.ai) and the Claude Desktop app. Other LLM platforms can integrate through the API-level relay server. See [Advanced: Generalizability](#a-note-on-generalizability) for details.
 
+Here's what it looks like:
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/8bb8bea3-7469-41c5-b7d2-6fa554076c4c" width="280" alt="Dashboard"> <img src="https://github.com/user-attachments/assets/b6e88e66-4bf0-402e-91a2-d5b6a445899f" width="280" alt="Settings"> <img src="https://github.com/user-attachments/assets/c71116b4-a4cf-4460-841b-19f1447bef6e" width="280" alt="Settings">
+</p>
+
 ---
 
 ## How It Works
