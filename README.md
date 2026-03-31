@@ -28,7 +28,7 @@ The app is built on [buttplug.io](https://buttplug.io), the open-source standard
 
 Here's what it looks like:
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8bb8bea3-7469-41c5-b7d2-6fa554076c4c" width="280" alt="Dashboard"> <img src="https://github.com/user-attachments/assets/9d617fc1-56ac-49d9-ae73-5338e393e4ec" width="280" alt="Settings"> <img src="https://github.com/user-attachments/assets/1b3a2012-1cd0-425b-96f5-1b9d2b0dcce3" width="280" alt="Settings (continued)">
+  <img src="https://github.com/user-attachments/assets/01f8b5cc-f1bc-4915-b907-b0ab6c030eba" width="280" alt="Dashboard"> <img src="https://github.com/user-attachments/assets/9d617fc1-56ac-49d9-ae73-5338e393e4ec" width="280" alt="Settings"> <img src="https://github.com/user-attachments/assets/1b3a2012-1cd0-425b-96f5-1b9d2b0dcce3" width="280" alt="Settings (continued)">
 </p>
 
 ---
