@@ -190,13 +190,22 @@ _OUTPUT_PARAMS = {
         "description": "Duration in seconds. 0 = stay on until stop command.",
         "default": 0,
     },
+    "feature_index": {
+        "type": "integer",
+        "description": (
+            "Target a specific actuator by index when a device has multiple "
+            "actuators of the same type (e.g. Dolce motor 0 = internal, "
+            "motor 1 = external). Omit to drive all matching actuators together."
+        ),
+    },
 }
 
 
 def _make_output_handler(output_type: OutputType):
     """Factory for output command handlers."""
     async def handler(
-        device: str = "all", intensity: float = 0.5, duration: float = 0, **kw
+        device: str = "all", intensity: float = 0.5, duration: float = 0,
+        feature_index: Optional[int] = None, **kw
     ) -> str:
         clamped = max(0.0, min(1.0, float(intensity)))
         cmd = DeviceCommand(
@@ -204,6 +213,7 @@ def _make_output_handler(output_type: OutputType):
             device=device,
             intensity=clamped,
             duration=max(0.0, float(duration)),
+            feature_index=feature_index,
         )
         return await _send(cmd.model_dump(), intensity=clamped)
     return handler
@@ -212,7 +222,9 @@ def _make_output_handler(output_type: OutputType):
 # Standard outputs (available on most devices)
 _register_tool(
     "vibrate",
-    "Send vibration to a device. Most common output type.",
+    "Send vibration to a device. Most common output type. "
+    "For dual-motor devices (Dolce, Edge), use feature_index to target a "
+    "specific motor (e.g. Dolce: 0 = internal, 1 = external).",
     _OUTPUT_PARAMS,
 )(_make_output_handler(OutputType.VIBRATE))
 
@@ -311,6 +323,13 @@ _PATTERN_PARAMS = {
         "description": "Duration in seconds",
         "default": 10,
     },
+    "feature_index": {
+        "type": "integer",
+        "description": (
+            "Target a specific actuator by index when a device has multiple "
+            "actuators of the same type. Omit to drive all matching actuators."
+        ),
+    },
 }
 
 
@@ -321,6 +340,7 @@ def _make_pattern_handler(pattern_name: str):
         intensity: float = 0.6,
         duration: float = 10,
         hold_seconds: float = 0,
+        feature_index: Optional[int] = None,
         **kw,
     ) -> str:
         clamped = max(0.0, min(1.0, float(intensity)))
@@ -331,6 +351,7 @@ def _make_pattern_handler(pattern_name: str):
             intensity=clamped,
             duration=max(0.0, float(duration)),
             hold_seconds=max(0.0, float(hold_seconds)),
+            feature_index=feature_index,
         )
         return await _send(cmd.model_dump(), intensity=clamped)
     return handler

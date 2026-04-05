@@ -155,7 +155,7 @@ class DeviceManager {
             val intensity = activeIntensity[shortName] ?: 0f
             DeviceInfo(
                 shortName = shortName,
-                displayName = profile?.notes ?: bpDev?.deviceName ?: shortName,
+                displayName = bpDev?.deviceName ?: shortName,
                 capabilities = profile?.capabilities ?: emptyMap(),
                 intensityFloor = profile?.intensityFloor ?: 0f,
                 isActive = intensity > 0f,

@@ -91,6 +91,7 @@ class PatternRunner(
             ?: (payload["output_type"] as? String)
             ?: "vibrate"
         val duration = (payload["duration"] as? Number)?.toFloat() ?: 0f
+        val featureIndex = (payload["feature_index"] as? Number)?.toInt()
         val requestId = payload["request_id"] as? String ?: ""
 
         val targets = devices.resolveTargets(device)
@@ -99,12 +100,12 @@ class PatternRunner(
             return CommandAck(false, "Device not found. Available: $available", requestId)
         }
 
-        SBLog.i(TAG, "Command: $outputType intensity=$intensity duration=$duration targets=${targets.map { it.first }}")
+        SBLog.i(TAG, "Command: $outputType intensity=$intensity duration=$duration feature_index=$featureIndex targets=${targets.map { it.first }}")
 
         for ((shortName, idx) in targets) {
             val adj = devices.applyFloor(intensity, shortName)
             SBLog.i(TAG, "  $shortName: raw=$intensity adjusted=$adj")
-            intiface.scalarCmd(idx, adj, outputType)
+            intiface.scalarCmd(idx, adj, outputType, featureIndex)
             devices.setDeviceActive(shortName, intensity)
         }
         notifyDeviceState()
@@ -136,6 +137,7 @@ class PatternRunner(
             ?: (payload["output_type"] as? String)
             ?: "vibrate"
         val hold = (payload["hold_seconds"] as? Number)?.toFloat() ?: 0f
+        val featureIndex = (payload["feature_index"] as? Number)?.toInt()
         val requestId = payload["request_id"] as? String ?: ""
 
         val targets = devices.resolveTargets(device)
@@ -153,7 +155,7 @@ class PatternRunner(
             val task = when (pattern) {
                 "pulse" -> patternScope.launch {
                     try {
-                        runPulse(idx, outputType, intensity, duration, floor, shortName)
+                        runPulse(idx, outputType, intensity, duration, floor, shortName, featureIndex)
                     } finally {
                         devices.setDeviceStopped(shortName)
                         notifyDeviceState()
@@ -161,7 +163,7 @@ class PatternRunner(
                 }
                 "wave" -> patternScope.launch {
                     try {
-                        runWave(idx, outputType, intensity, duration, floor, shortName)
+                        runWave(idx, outputType, intensity, duration, floor, shortName, featureIndex)
                     } finally {
                         devices.setDeviceStopped(shortName)
                         notifyDeviceState()
@@ -169,7 +171,7 @@ class PatternRunner(
                 }
                 "escalate" -> patternScope.launch {
                     try {
-                        runEscalate(idx, outputType, intensity, duration, hold, floor, shortName)
+                        runEscalate(idx, outputType, intensity, duration, hold, floor, shortName, featureIndex)
                     } finally {
                         devices.setDeviceStopped(shortName)
                         notifyDeviceState()
@@ -228,17 +230,17 @@ class PatternRunner(
 
     // ── Pattern Implementations ─────────────────────────────────────
 
-    private suspend fun runPulse(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String) {
+    private suspend fun runPulse(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String, featureIndex: Int? = null) {
         try {
             val startTime = System.currentTimeMillis()
             var on = true
             while (System.currentTimeMillis() - startTime < duration * 1000) {
                 if (on) {
                     val adj = applyFloor(intensity, floor)
-                    intiface.scalarCmd(idx, adj, outputType)
+                    intiface.scalarCmd(idx, adj, outputType, featureIndex)
                     devices.setDeviceActive(shortName, intensity)
                 } else {
-                    intiface.scalarCmd(idx, 0f, outputType)
+                    intiface.scalarCmd(idx, 0f, outputType, featureIndex)
                     devices.setDeviceActive(shortName, 0.01f) // still "active" during off-phase
                 }
                 on = !on
@@ -250,14 +252,14 @@ class PatternRunner(
         }
     }
 
-    private suspend fun runWave(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String) {
+    private suspend fun runWave(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String, featureIndex: Int? = null) {
         try {
             val startTime = System.currentTimeMillis()
             while (System.currentTimeMillis() - startTime < duration * 1000) {
                 val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
                 val raw = ((sin(elapsed * 2.0) + 1.0) / 2.0 * intensity).toFloat()
                 val adj = applyFloor(raw, floor)
-                intiface.scalarCmd(idx, adj, outputType)
+                intiface.scalarCmd(idx, adj, outputType, featureIndex)
                 devices.setDeviceActive(shortName, raw)
                 delay(100)
             }
@@ -267,13 +269,13 @@ class PatternRunner(
         }
     }
 
-    private suspend fun runEscalate(idx: Int, outputType: String, peak: Float, duration: Float, hold: Float, floor: Float, shortName: String) {
+    private suspend fun runEscalate(idx: Int, outputType: String, peak: Float, duration: Float, hold: Float, floor: Float, shortName: String, featureIndex: Int? = null) {
         try {
             val steps = 20
             for (i in 0..steps) {
                 val raw = (i.toFloat() / steps) * peak
                 val adj = applyFloor(raw, floor)
-                intiface.scalarCmd(idx, adj, outputType)
+                intiface.scalarCmd(idx, adj, outputType, featureIndex)
                 devices.setDeviceActive(shortName, raw)
                 delay((duration * 1000 / steps).toLong())
             }

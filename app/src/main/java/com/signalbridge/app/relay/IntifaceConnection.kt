@@ -141,14 +141,24 @@ class IntifaceConnection(
 
     /**
      * Send a ScalarCmd to a device (vibrate, rotate, etc.)
+     *
+     * @param featureIndex optional actuator index to target a specific motor.
+     *   When null, all actuators matching [actuatorType] are driven together.
+     *   Useful for dual-motor devices like Dolce (0 = internal, 1 = external).
      */
-    suspend fun scalarCmd(deviceIndex: Int, intensity: Float, actuatorType: String = "Vibrate") {
+    suspend fun scalarCmd(
+        deviceIndex: Int,
+        intensity: Float,
+        actuatorType: String = "Vibrate",
+        featureIndex: Int? = null,
+    ) {
         val device = _devices[deviceIndex] ?: return
         val scalars = mutableListOf<ScalarEntry>()
 
-        // Find matching actuators
+        // Find matching actuators, optionally filtered by feature index
         for (actuator in device.scalarActuators) {
             if (actuator.actuatorType.equals(actuatorType, ignoreCase = true)) {
+                if (featureIndex != null && actuator.index != featureIndex) continue
                 scalars.add(ScalarEntry(
                     index = actuator.index,
                     scalar = intensity.coerceIn(0f, 1f),
@@ -157,10 +167,10 @@ class IntifaceConnection(
             }
         }
 
-        // Fallback: if no matching actuator found, use index 0
+        // Fallback: if no matching actuator found, use requested index (or 0)
         if (scalars.isEmpty()) {
             scalars.add(ScalarEntry(
-                index = 0,
+                index = featureIndex ?: 0,
                 scalar = intensity.coerceIn(0f, 1f),
                 actuatorType = actuatorType,
             ))

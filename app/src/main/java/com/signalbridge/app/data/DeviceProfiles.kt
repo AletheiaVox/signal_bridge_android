@@ -58,9 +58,9 @@ val BUILT_IN_PROFILES = listOf(
     DeviceProfile(
         shortName = "edge",
         matchStrings = listOf("Edge"),
-        capabilities = mapOf("vibrate" to "dual motor vibration"),
+        capabilities = mapOf("vibrate" to "dual motor vibration (feature_index 0 = base, 1 = tip)"),
         intensityFloor = 0.0f,
-        notes = "Prostate massager. Two independent vibration motors."
+        notes = "Prostate massager. Two vibration motors addressable via feature_index: 0 = base motor, 1 = tip motor. Omit feature_index to drive both together."
     ),
     DeviceProfile(
         shortName = "hush",
@@ -86,9 +86,9 @@ val BUILT_IN_PROFILES = listOf(
     DeviceProfile(
         shortName = "dolce",
         matchStrings = listOf("Dolce"),
-        capabilities = mapOf("vibrate" to "dual vibration"),
+        capabilities = mapOf("vibrate" to "dual vibration (feature_index 0 = internal, 1 = external)"),
         intensityFloor = 0.0f,
-        notes = "Couples' vibrator. Dual motors."
+        notes = "Couples' vibrator. Two vibration motors addressable via feature_index: 0 = internal motor, 1 = external clitoral motor. Omit feature_index to drive both together."
     ),
     DeviceProfile(
         shortName = "flexer",
