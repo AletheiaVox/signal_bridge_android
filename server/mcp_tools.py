@@ -197,6 +197,7 @@ _OUTPUT_PARAMS = {
             "actuators of the same type (e.g. Dolce motor 0 = internal, "
             "motor 1 = external). Omit to drive all matching actuators together."
         ),
+        "default": None,
     },
 }
 
@@ -329,6 +330,7 @@ _PATTERN_PARAMS = {
             "Target a specific actuator by index when a device has multiple "
             "actuators of the same type. Omit to drive all matching actuators."
         ),
+        "default": None,
     },
 }
 
