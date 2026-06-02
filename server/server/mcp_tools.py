@@ -197,7 +197,6 @@ _OUTPUT_PARAMS = {
             "actuators of the same type (e.g. Dolce motor 0 = internal, "
             "motor 1 = external). Omit to drive all matching actuators together."
         ),
-        "default": None,
     },
 }
 
@@ -227,6 +226,7 @@ _register_tool(
     "For dual-motor devices (Dolce, Edge), use feature_index to target a "
     "specific motor (e.g. Dolce: 0 = internal, 1 = external).",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.VIBRATE))
 
 _register_tool(
@@ -234,6 +234,7 @@ _register_tool(
     "Send rotation/sonic pulse output. Device-specific — some devices use this "
     "for sonic clitoral stimulation rather than physical rotation.",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.ROTATE))
 
 _register_tool(
@@ -241,6 +242,7 @@ _register_tool(
     "Send oscillation/thrusting output. Device-specific — typically linear "
     "thrusting motion.",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.OSCILLATE))
 
 # Extended outputs (device-specific, may not be available on all hardware)
@@ -249,6 +251,7 @@ _register_tool(
     "Send constriction/compression output. Device-specific — available on "
     "devices with squeeze or compression mechanisms.",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.CONSTRICT))
 
 _register_tool(
@@ -256,12 +259,14 @@ _register_tool(
     "Set temperature output. Device-specific — available on devices with "
     "heating or cooling elements. Intensity maps to temperature range.",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.TEMPERATURE))
 
 _register_tool(
     "led",
     "Control LED light output. Device-specific — intensity controls brightness.",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.LED))
 
 _register_tool(
@@ -269,12 +274,14 @@ _register_tool(
     "Set linear position. Device-specific — intensity maps to position "
     "along the device's range of motion (0.0 = retracted, 1.0 = extended).",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.POSITION))
 
 _register_tool(
     "spray",
     "Trigger spray/liquid output. Device-specific.",
     _OUTPUT_PARAMS,
+    required=["device"],
 )(_make_output_handler(OutputType.SPRAY))
 
 
@@ -330,7 +337,6 @@ _PATTERN_PARAMS = {
             "Target a specific actuator by index when a device has multiple "
             "actuators of the same type. Omit to drive all matching actuators."
         ),
-        "default": None,
     },
 }
 
@@ -364,6 +370,7 @@ _register_tool(
     "Rhythmic on/off pattern. 0.5s on at intensity, 0.3s off, repeating. "
     "Works with any output type (default: vibrate).",
     _PATTERN_PARAMS,
+    required=["device"],
 )(_make_pattern_handler("pulse"))
 
 _register_tool(
@@ -371,6 +378,7 @@ _register_tool(
     "Smooth sine-wave intensity modulation. Rises and falls continuously. "
     "Works with any output type (default: vibrate).",
     _PATTERN_PARAMS,
+    required=["device"],
 )(_make_pattern_handler("wave"))
 
 _register_tool(
@@ -387,6 +395,7 @@ _register_tool(
             "default": 0,
         },
     },
+    required=["device"],
 )(_make_pattern_handler("escalate"))
 
 
