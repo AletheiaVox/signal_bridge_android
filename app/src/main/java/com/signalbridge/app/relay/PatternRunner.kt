@@ -234,7 +234,9 @@ class PatternRunner(
         try {
             val startTime = System.currentTimeMillis()
             var on = true
-            while (System.currentTimeMillis() - startTime < duration * 1000) {
+            // duration <= 0 = run indefinitely until an explicit stop cancels this job,
+            // matching how plain commands treat duration=0 (stay on until stop).
+            while (duration <= 0f || System.currentTimeMillis() - startTime < duration * 1000) {
                 if (on) {
                     val adj = applyFloor(intensity, floor)
                     intiface.scalarCmd(idx, adj, outputType, featureIndex)
@@ -255,7 +257,8 @@ class PatternRunner(
     private suspend fun runWave(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String, featureIndex: Int? = null) {
         try {
             val startTime = System.currentTimeMillis()
-            while (System.currentTimeMillis() - startTime < duration * 1000) {
+            // duration <= 0 = run indefinitely until an explicit stop cancels this job.
+            while (duration <= 0f || System.currentTimeMillis() - startTime < duration * 1000) {
                 val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
                 val raw = ((sin(elapsed * 2.0) + 1.0) / 2.0 * intensity).toFloat()
                 val adj = applyFloor(raw, floor)
@@ -292,19 +295,4 @@ class PatternRunner(
     private fun applyFloor(raw: Float, floor: Float): Float {
         if (raw <= 0.01f) return 0f
         return if (floor > 0f) {
-            (floor + raw * (1f - floor)).coerceIn(0f, 1f)
-        } else {
-            raw.coerceIn(0f, 1f)
-        }
-    }
-}
-
-/**
- * Ack result from command processing.
- */
-data class CommandAck(
-    val success: Boolean,
-    val message: String,
-    val requestId: String,
-    val devicesAffected: List<String> = emptyList(),
-)
+            (floor + raw * (1f - f

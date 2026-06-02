@@ -9,9 +9,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.signalbridge.app.auth.AuthRepository
+import com.signalbridge.app.data.RelayState
+import com.signalbridge.app.data.RelayStateHolder
+import com.signalbridge.app.service.RelayService
 import com.signalbridge.app.ui.navigation.Routes
 import com.signalbridge.app.ui.navigation.SignalBridgeNavGraph
 import com.signalbridge.app.ui.theme.SignalBridgeTheme
+import com.signalbridge.app.util.SBLog
 
 class MainActivity : ComponentActivity() {
 
@@ -42,14 +46,4 @@ class MainActivity : ComponentActivity() {
                         startDestination = startDestination,
                     )
                 }
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (::authRepository.isInitialized) {
-            authRepository.close()
-        }
-    }
-}
+     

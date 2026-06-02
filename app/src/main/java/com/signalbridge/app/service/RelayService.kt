@@ -44,6 +44,7 @@ class RelayService : Service() {
             ACTION_START -> startRelay()
             ACTION_STOP -> stopRelay()
             ACTION_EMERGENCY_STOP -> handleEmergencyStop()
+            ACTION_RECHECK -> recheckRelay()
             else -> startRelay()
         }
         return START_STICKY  // Restart if killed
@@ -117,6 +118,13 @@ class RelayService : Service() {
                 // Engine's relay loop will detect the broken WebSocket and reconnect
             }
         }
+        monitor.onNetworkAvailable = {
+            // Auto-recover: if the engine had terminally given up (e.g. a transient
+            // Intiface/localhost blip exhausted its retries), connectivity returning
+            // re-arms it. No-op while it's still running.
+            SBLog.i("RelayService", "Network available — ensuring relay is running")
+            eng.requestReconnect()
+        }
         monitor.start()
         networkMonitor = monitor
 
@@ -136,6 +144,23 @@ class RelayService : Service() {
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    /**
+     * Foreground re-check: if the relay engine exists but has terminally given up,
+     * re-arm it. Triggered when the user brings the app back to the foreground.
+     * If there's no engine (the user had stopped the relay), this is a clean no-op
+     * and the transient service instance stops itself.
+     */
+    private fun recheckRelay() {
+        val eng = engine
+        if (eng == null) {
+            SBLog.i("RelayService", "Recheck with no active engine — nothing to recover")
+            stopSelf()
+            return
+        }
+        SBLog.i("RelayService", "Foreground recheck — ensuring relay is running")
+        eng.requestReconnect()
     }
 
     private fun handleEmergencyStop() {
@@ -214,39 +239,4 @@ class RelayService : Service() {
         }
     }
 
-    private fun releaseWakeLock() {
-        wakeLock?.let {
-            if (it.isHeld) it.release()
-        }
-        wakeLock = null
-    }
-
-    // ── Static helpers for starting/stopping from UI ──────────
-
-    companion object {
-        const val ACTION_START = "com.signalbridge.START"
-        const val ACTION_STOP = "com.signalbridge.STOP"
-        const val ACTION_EMERGENCY_STOP = "com.signalbridge.EMERGENCY_STOP"
-
-        fun start(context: Context) {
-            val intent = Intent(context, RelayService::class.java).apply {
-                action = ACTION_START
-            }
-            context.startForegroundService(intent)
-        }
-
-        fun stop(context: Context) {
-            val intent = Intent(context, RelayService::class.java).apply {
-                action = ACTION_STOP
-            }
-            context.startService(intent)
-        }
-
-        fun emergencyStop(context: Context) {
-            val intent = Intent(context, RelayService::class.java).apply {
-                action = ACTION_EMERGENCY_STOP
-            }
-            context.startService(intent)
-        }
-    }
-}
+    private

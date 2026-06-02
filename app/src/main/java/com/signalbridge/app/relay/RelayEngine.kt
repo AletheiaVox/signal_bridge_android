@@ -50,9 +50,12 @@ class RelayEngine(
     @Volatile
     private var isRunning = false
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s max — give up after MAX_RETRIES
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s cap. Lenient ceiling — combined with
+    // connectivity-based auto-recover (RelayService wires NetworkMonitor.onNetworkAvailable
+    // -> requestReconnect), so a transient Intiface/localhost blip won't strand the relay
+    // the way the old ceiling of 5 (~31s) did.
     private var retryCount = 0
-    private val MAX_RETRIES = 5
+    private val MAX_RETRIES = 12
     private fun nextBackoffMs(): Long {
         val delay = minOf(1000L * (1L shl retryCount), 30_000L)
         retryCount++
@@ -72,6 +75,17 @@ class RelayEngine(
         relayJob = engineScope.launch {
             relayLoop()
         }
+    }
+
+    /**
+     * Re-arm the relay after it has terminally given up (e.g. connectivity returned,
+     * or the user re-opened the app). No-op if the engine is still running, so it's
+     * safe to call repeatedly from a network callback.
+     */
+    fun requestReconnect() {
+        if (isRunning) return
+        SBLog.i(TAG, "requestReconnect — restarting relay loop")
+        start()
     }
 
     /**
@@ -447,28 +461,4 @@ class RelayEngine(
             serverConnected = serverConnected,
             intifaceConnected = intifaceConnected,
             intifaceHealthy = intifaceHealthy,
-            lastHeartbeatAgo = System.currentTimeMillis() - lastHeartbeatTime,
-        ))
-    }
-}
-
-/**
- * Convert a JsonObject to a simple Map<String, Any?> for the PatternRunner.
- */
-private fun JsonObject.toMap(): Map<String, Any?> {
-    return entries.associate { (key, value) ->
-        key to value.toAny()
-    }
-}
-
-private fun JsonElement.toAny(): Any? {
-    return when (this) {
-        is JsonPrimitive -> {
-            if (isString) content
-            else booleanOrNull ?: intOrNull ?: longOrNull ?: floatOrNull ?: doubleOrNull ?: content
-        }
-        is JsonArray -> map { it.toAny() }
-        is JsonObject -> toMap()
-        else -> null
-    }
-}
+            lastHeartbeatAgo = Syst

@@ -135,9 +135,13 @@ class DeviceManager {
                 }
             }
 
+            // Friendly name: capitalized profile short name (e.g. "Lush") when matched,
+            // otherwise the raw Buttplug/Bluetooth name. Never the notes/description.
+            val friendlyName = profile?.shortName?.replaceFirstChar { it.uppercase() } ?: bpName
+
             mapOf(
                 "short_name" to shortName,
-                "name" to (profile?.notes ?: bpName),
+                "name" to friendlyName,
                 "intensity_floor" to (profile?.intensityFloor ?: 0f),
                 "capabilities" to capabilities,
                 "notes" to (profile?.notes ?: bpName),
@@ -155,7 +159,10 @@ class DeviceManager {
             val intensity = activeIntensity[shortName] ?: 0f
             DeviceInfo(
                 shortName = shortName,
-                displayName = bpDev?.deviceName ?: shortName,
+                // Prefer the capitalized profile short name ("Lush") over the raw
+                // Bluetooth name ("Lovense Lush"); fall back to BT name, then short name.
+                displayName = profile?.shortName?.replaceFirstChar { it.uppercase() }
+                    ?: bpDev?.deviceName ?: shortName,
                 capabilities = profile?.capabilities ?: emptyMap(),
                 intensityFloor = profile?.intensityFloor ?: 0f,
                 isActive = intensity > 0f,
@@ -171,27 +178,4 @@ class DeviceManager {
      * Call when a command or pattern step sets a new level.
      */
     fun setDeviceActive(shortName: String, intensity: Float) {
-        activeIntensity[shortName] = intensity.coerceIn(0f, 1f)
-    }
-
-    /**
-     * Mark a device as idle (stopped).
-     */
-    fun setDeviceStopped(shortName: String) {
-        activeIntensity.remove(shortName)
-    }
-
-    /**
-     * Mark all devices as idle.
-     */
-    fun setAllStopped() {
-        activeIntensity.clear()
-    }
-
-    /**
-     * True if any device is currently active.
-     */
-    val hasActiveDevices: Boolean get() = activeIntensity.isNotEmpty()
-
-    val deviceCount: Int get() = nameMap.size
-}
+      

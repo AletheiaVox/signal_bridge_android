@@ -27,6 +27,11 @@ class IntifaceConnection(
 ) {
     private val TAG = "IntifaceConn"
 
+    // Bounds so a half-open / stalled socket surfaces as a retryable error instead of
+    // hanging connect() forever (which no retry ceiling could rescue).
+    private val CONNECT_TIMEOUT_MS = 8_000L
+    private val HANDSHAKE_TIMEOUT_MS = 5_000L
+
     private val client = HttpClient(OkHttp) {
         install(WebSockets)
     }
@@ -56,15 +61,22 @@ class IntifaceConnection(
     suspend fun connect() {
         SBLog.i(TAG, "Connecting to Intiface at $url")
 
-        val ws = client.webSocketSession(url)
+        val ws = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { client.webSocketSession(url) }
+            ?: throw Exception("Timed out opening WebSocket to Intiface ($url)")
         session = ws
         isConnected = true
 
         // Buttplug handshake: RequestServerInfo
         send(buildRequestServerInfo(nextId()))
 
-        // Read handshake response
-        val frame = ws.incoming.receive()
+        // Read handshake response — bounded so a silent socket becomes a retryable error.
+        val frame = withTimeoutOrNull(HANDSHAKE_TIMEOUT_MS) { ws.incoming.receive() }
+        if (frame == null) {
+            try { ws.close(CloseReason(CloseReason.Codes.NORMAL, "handshake timeout")) } catch (_: Exception) {}
+            session = null
+            isConnected = false
+            throw Exception("Intiface handshake timed out — no ServerInfo received")
+        }
         if (frame is Frame.Text) {
             val events = parseButtplugMessages(frame.readText())
             for (event in events) {
@@ -221,26 +233,4 @@ class IntifaceConnection(
                 SBLog.i(TAG, "Device removed: ${removed?.deviceName ?: "index ${event.deviceIndex}"}")
                 deviceEvents.trySend(event)
             }
-            is ButtplugEvent.DeviceList -> {
-                for (dev in event.devices) {
-                    _devices[dev.deviceIndex] = dev
-                }
-                SBLog.i(TAG, "Device list updated: ${_devices.size} device(s)")
-                deviceEvents.trySend(event)
-            }
-            is ButtplugEvent.Error -> {
-                SBLog.e(TAG, "Buttplug error: ${event.message} (code ${event.errorCode})")
-            }
-            is ButtplugEvent.ScanningFinished -> {
-                SBLog.i(TAG, "Scanning finished")
-            }
-            else -> {} // Ok, ServerInfo — no action needed post-handshake
-        }
-    }
-
-    private suspend fun send(message: String) {
-        sendMutex.withLock {
-            session?.send(Frame.Text(message))
-        }
-    }
-}
+            is Buttpl
