@@ -1,0 +1,11 @@
+# Normalize line endings: store as LF in repo, convert per-platform on checkout
+* text=auto eol=lf
+
+# Binary types (never modify)
+*.jks binary
+*.apk binary
+*.aab binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary

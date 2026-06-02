@@ -24,3 +24,12 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Server runtime
+server/.env
+server/signal_bridge.db
+server/*.db
+
+# iOS port (lives in its own folder)
+signal_bridge_ios-main/
+ios_port_review.md
