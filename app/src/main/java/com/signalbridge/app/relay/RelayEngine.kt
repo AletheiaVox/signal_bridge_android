@@ -461,4 +461,28 @@ class RelayEngine(
             serverConnected = serverConnected,
             intifaceConnected = intifaceConnected,
             intifaceHealthy = intifaceHealthy,
-            lastHeartbeatAgo = Syst
+            lastHeartbeatAgo = System.currentTimeMillis() - lastHeartbeatTime,
+        ))
+    }
+}
+
+/**
+ * Convert a JsonObject to a simple Map<String, Any?> for the PatternRunner.
+ */
+private fun JsonObject.toMap(): Map<String, Any?> {
+    return entries.associate { (key, value) ->
+        key to value.toAny()
+    }
+}
+
+private fun JsonElement.toAny(): Any? {
+    return when (this) {
+        is JsonPrimitive -> {
+            if (isString) content
+            else booleanOrNull ?: intOrNull ?: longOrNull ?: floatOrNull ?: doubleOrNull ?: content
+        }
+        is JsonArray -> map { it.toAny() }
+        is JsonObject -> toMap()
+        else -> null
+    }
+}

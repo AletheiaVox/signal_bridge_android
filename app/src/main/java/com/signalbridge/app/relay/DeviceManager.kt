@@ -178,4 +178,27 @@ class DeviceManager {
      * Call when a command or pattern step sets a new level.
      */
     fun setDeviceActive(shortName: String, intensity: Float) {
-      
+        activeIntensity[shortName] = intensity.coerceIn(0f, 1f)
+    }
+
+    /**
+     * Mark a device as idle (stopped).
+     */
+    fun setDeviceStopped(shortName: String) {
+        activeIntensity.remove(shortName)
+    }
+
+    /**
+     * Mark all devices as idle.
+     */
+    fun setAllStopped() {
+        activeIntensity.clear()
+    }
+
+    /**
+     * True if any device is currently active.
+     */
+    val hasActiveDevices: Boolean get() = activeIntensity.isNotEmpty()
+
+    val deviceCount: Int get() = nameMap.size
+}

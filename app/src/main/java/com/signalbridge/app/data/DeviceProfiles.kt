@@ -16,86 +16,101 @@ val BUILT_IN_PROFILES = listOf(
     DeviceProfile(
         shortName = "ferri",
         matchStrings = listOf("Ferri"),
-        capabilities = mapOf("vibrate" to "external clitoral vibration"),
+        capabilities = mapOf("vibrate" to "compact eccentric-mass actuator, high response at low duty cycle"),
         intensityFloor = 0.0f,
-        notes = "Small wearable. Intense even at low settings."
+        notes = "Small form factor. High effective output at low values; recommend starting below 0.3."
     ),
     DeviceProfile(
         shortName = "lush",
         matchStrings = listOf("Lush"),
-        capabilities = mapOf("vibrate" to "internal egg vibration"),
+        capabilities = mapOf("vibrate" to "single eccentric-mass actuator, low-frequency dominant"),
         intensityFloor = 0.0f,
-        notes = "Insertable egg. Strong deep vibration."
+        notes = "Compact ovoid form factor. High output efficiency at low command levels."
     ),
     DeviceProfile(
         shortName = "gravity",
         matchStrings = listOf("Gravity"),
-        capabilities = mapOf("vibrate" to "shaft vibration", "oscillate" to "thrusting motion"),
+        capabilities = mapOf(
+            "vibrate" to "eccentric-mass actuator along main axis",
+            "oscillate" to "linear reciprocating actuator; stroke rate scales with intensity"
+        ),
         intensityFloor = 0.0f,
-        notes = "Vibration + thrusting. Use 0.05+ intensity for slow strokes."
+        notes = "Dual-mode device. Oscillate requires intensity >= 0.05 to engage; low values map to slow cycle rate."
     ),
     DeviceProfile(
         shortName = "enigma",
         matchStrings = listOf("Enigma"),
-        capabilities = mapOf("vibrate" to "G-spot thumping stimulation", "rotate" to "clitoral sonic pulse"),
+        capabilities = mapOf(
+            "vibrate" to "high-amplitude pulsed actuator (impact-style, not continuous waveform)",
+            "rotate" to "sonic-frequency acoustic actuator (note: maps to acoustic output, NOT mechanical rotation)"
+        ),
         intensityFloor = 0.4f,
-        notes = "Dual stimulation. 'rotate' = sonic pulse. Needs 40%+ to feel."
+        notes = "Two independent actuators. Threshold response: effective activation threshold ≈0.4. Rotate channel is acoustic, not rotational."
     ),
     DeviceProfile(
         shortName = "max",
         matchStrings = listOf("Max"),
-        capabilities = mapOf("vibrate" to "internal vibration", "constrict" to "air pump compression"),
+        capabilities = mapOf(
+            "vibrate" to "eccentric-mass actuator",
+            "constrict" to "pneumatic compression actuator; intensity maps to chamber pressure"
+        ),
         intensityFloor = 0.0f,
-        notes = "Vibration + air pump constriction."
+        notes = "Two independent actuators. Constrict is air-pump driven; intensity = compression force."
     ),
     DeviceProfile(
         shortName = "nora",
         matchStrings = listOf("Nora"),
-        capabilities = mapOf("vibrate" to "internal vibration", "rotate" to "internal rotation"),
+        capabilities = mapOf(
+            "vibrate" to "eccentric-mass actuator",
+            "rotate" to "mechanical rotational actuator (true rotation, distinct from enigma's acoustic channel)"
+        ),
         intensityFloor = 0.0f,
-        notes = "Vibration + actual physical rotation."
+        notes = "Two independent actuators. Rotate is mechanical, not acoustic."
     ),
     DeviceProfile(
         shortName = "edge",
         matchStrings = listOf("Edge"),
-        capabilities = mapOf("vibrate" to "dual motor vibration (feature_index 0 = base, 1 = tip)"),
+        capabilities = mapOf("vibrate" to "two independent eccentric-mass actuators; address individually via feature_index"),
         intensityFloor = 0.0f,
-        notes = "Prostate massager. Two vibration motors addressable via feature_index: 0 = base motor, 1 = tip motor. Omit feature_index to drive both together."
+        notes = "Dual-actuator device. Use feature_index 0 or 1 to drive motors separately."
     ),
     DeviceProfile(
         shortName = "hush",
         matchStrings = listOf("Hush"),
-        capabilities = mapOf("vibrate" to "vibration"),
+        capabilities = mapOf("vibrate" to "single eccentric-mass actuator"),
         intensityFloor = 0.0f,
-        notes = "Vibrating plug. Simple single-motor."
+        notes = "Single-actuator device, no quirks."
     ),
     DeviceProfile(
         shortName = "domi",
         matchStrings = listOf("Domi"),
-        capabilities = mapOf("vibrate" to "powerful wand vibration"),
+        capabilities = mapOf("vibrate" to "high-output eccentric-mass actuator, broad-spectrum"),
         intensityFloor = 0.0f,
-        notes = "Mini wand. Very powerful. Start low."
+        notes = "High maximum output relative to other devices in this set. Typical operating range: 0.05–0.30."
     ),
     DeviceProfile(
         shortName = "osci",
         matchStrings = listOf("Osci"),
-        capabilities = mapOf("oscillate" to "oscillating stimulation"),
+        capabilities = mapOf("oscillate" to "linear reciprocating actuator (no vibrate channel)"),
         intensityFloor = 0.0f,
-        notes = "Oscillating G-spot stimulator. Uses oscillate, not vibrate."
+        notes = "Single-channel device. Responds only to oscillate, not vibrate."
     ),
     DeviceProfile(
         shortName = "dolce",
         matchStrings = listOf("Dolce"),
-        capabilities = mapOf("vibrate" to "dual vibration (feature_index 0 = internal, 1 = external)"),
+        capabilities = mapOf("vibrate" to "two independent eccentric-mass actuators; address individually via feature_index"),
         intensityFloor = 0.0f,
-        notes = "Couples' vibrator. Two vibration motors addressable via feature_index: 0 = internal motor, 1 = external clitoral motor. Omit feature_index to drive both together."
+        notes = "Dual-actuator device. Use feature_index 0 or 1 to drive motors separately."
     ),
     DeviceProfile(
         shortName = "flexer",
         matchStrings = listOf("Flexer"),
-        capabilities = mapOf("vibrate" to "vibration", "oscillate" to "come-hither motion"),
+        capabilities = mapOf(
+            "vibrate" to "eccentric-mass actuator",
+            "oscillate" to "articulated curling actuator (pivots rather than reciprocates linearly)"
+        ),
         intensityFloor = 0.0f,
-        notes = "Vibration + finger-like come-hither oscillation."
+        notes = "Two independent actuators. Oscillate uses curling articulation, not linear stroke."
     ),
 )
 

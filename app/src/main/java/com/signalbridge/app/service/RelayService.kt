@@ -239,4 +239,40 @@ class RelayService : Service() {
         }
     }
 
-    private
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        wakeLock = null
+    }
+
+    // ── Static helpers for starting/stopping from UI ──────────
+
+    companion object {
+        const val ACTION_START = "com.signalbridge.START"
+        const val ACTION_STOP = "com.signalbridge.STOP"
+        const val ACTION_EMERGENCY_STOP = "com.signalbridge.EMERGENCY_STOP"
+        const val ACTION_RECHECK = "com.signalbridge.RECHECK"
+
+        fun start(context: Context) {
+            val intent = Intent(context, RelayService::class.java).apply {
+                action = ACTION_START
+            }
+            context.startForegroundService(intent)
+        }
+
+        fun stop(context: Context) {
+            val intent = Intent(context, RelayService::class.java).apply {
+                action = ACTION_STOP
+            }
+            context.startService(intent)
+        }
+
+        fun emergencyStop(context: Context) {
+            val intent = Intent(context, RelayService::class.java).apply {
+                action = ACTION_EMERGENCY_STOP
+            }
+            context.startService(intent)
+        }
+    }
+}

@@ -295,4 +295,19 @@ class PatternRunner(
     private fun applyFloor(raw: Float, floor: Float): Float {
         if (raw <= 0.01f) return 0f
         return if (floor > 0f) {
-            (floor + raw * (1f - f
+            (floor + raw * (1f - floor)).coerceIn(0f, 1f)
+        } else {
+            raw.coerceIn(0f, 1f)
+        }
+    }
+}
+
+/**
+ * Ack result from command processing.
+ */
+data class CommandAck(
+    val success: Boolean,
+    val message: String,
+    val requestId: String,
+    val devicesAffected: List<String> = emptyList(),
+)

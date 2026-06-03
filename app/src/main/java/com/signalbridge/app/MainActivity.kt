@@ -46,4 +46,14 @@ class MainActivity : ComponentActivity() {
                         startDestination = startDestination,
                     )
                 }
-     
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::authRepository.isInitialized) {
+            authRepository.close()
+        }
+    }
+}

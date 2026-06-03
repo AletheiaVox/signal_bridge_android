@@ -233,4 +233,26 @@ class IntifaceConnection(
                 SBLog.i(TAG, "Device removed: ${removed?.deviceName ?: "index ${event.deviceIndex}"}")
                 deviceEvents.trySend(event)
             }
-            is Buttpl
+            is ButtplugEvent.DeviceList -> {
+                for (dev in event.devices) {
+                    _devices[dev.deviceIndex] = dev
+                }
+                SBLog.i(TAG, "Device list updated: ${_devices.size} device(s)")
+                deviceEvents.trySend(event)
+            }
+            is ButtplugEvent.Error -> {
+                SBLog.e(TAG, "Buttplug error: ${event.message} (code ${event.errorCode})")
+            }
+            is ButtplugEvent.ScanningFinished -> {
+                SBLog.i(TAG, "Scanning finished")
+            }
+            else -> {} // Ok, ServerInfo — no action needed post-handshake
+        }
+    }
+
+    private suspend fun send(message: String) {
+        sendMutex.withLock {
+            session?.send(Frame.Text(message))
+        }
+    }
+}

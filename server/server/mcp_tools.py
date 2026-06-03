@@ -7,7 +7,7 @@ All tools that Claude can call to control devices. Each tool:
   3. Routes it through the session registry to the user's phone
   4. Returns the result to Claude
 
-Expanded to support ALL Buttplug output types:
+Expanded to support ALL output types:
   vibrate, rotate, oscillate, constrict, temperature, led, position, spray
 
 And sensor input types:
@@ -103,7 +103,7 @@ async def _send(command: dict, intensity: float = 0.0) -> str:
 
 @_register_tool(
     "list_devices",
-    "List all connected devices with their capabilities, intensity floors, and notes.",
+    "List all connected devices and their supported outputs, operating ranges, and metadata.",
     {},
 )
 async def list_devices(**kwargs) -> str:
@@ -139,7 +139,11 @@ async def list_devices(**kwargs) -> str:
 
     lines = []
     for d in devices:
-        caps = ", ".join(d.get("capabilities", {}).keys())
+        caps_dict = d.get("capabilities", {})
+        # Surface capability values when present so the model knows what each
+        # output channel actually does; fall back to bare keys for terse entries.
+        caps_parts = [f"{k} ({v})" if v else k for k, v in caps_dict.items()]
+        caps = ", ".join(caps_parts)
         notes = d.get("notes", "")
         floor = d.get("intensity_floor", 0)
         lines.append(
@@ -148,7 +152,7 @@ async def list_devices(**kwargs) -> str:
             + (f" | {notes}" if notes else "")
         )
 
-    # Append governor state so Claude knows the session budget
+    # Append governor state so AI knows the session budget
     gov = governor.get_state(user_id)
     heat = gov["heat_pct"]
     if gov["in_cooldown"]:
@@ -177,7 +181,7 @@ async def scan_devices(**kwargs) -> str:
 _OUTPUT_PARAMS = {
     "device": {
         "type": "string",
-        "description": "Device short name (e.g. 'ferri', 'lush', 'gravity') or 'all'",
+        "description": "Device short name or 'all'",
         "default": "all",
     },
     "intensity": {
@@ -194,8 +198,8 @@ _OUTPUT_PARAMS = {
         "type": "integer",
         "description": (
             "Target a specific actuator by index when a device has multiple "
-            "actuators of the same type (e.g. Dolce motor 0 = internal, "
-            "motor 1 = external). Omit to drive all matching actuators together."
+            "actuators of the same type (e.g. Dolce motor 0 = primary, "
+            "motor 1 = secondary). Omit to drive all matching actuators together."
         ),
     },
 }
@@ -231,16 +235,16 @@ _register_tool(
 
 _register_tool(
     "rotate",
-    "Send rotation/sonic pulse output. Device-specific — some devices use this "
-    "for sonic clitoral stimulation rather than physical rotation.",
+    "Control rotational or oscillatory high-frequency actuator output. "
+    "Interpretation depends on device firmware.",
     _OUTPUT_PARAMS,
     required=["device"],
 )(_make_output_handler(OutputType.ROTATE))
 
 _register_tool(
     "oscillate",
-    "Send oscillation/thrusting output. Device-specific — typically linear "
-    "thrusting motion.",
+    "Control linear reciprocating actuator output. Intensity controls stroke amplitude/speed "
+    "depending on hardware.",
     _OUTPUT_PARAMS,
     required=["device"],
 )(_make_output_handler(OutputType.OSCILLATE))
@@ -248,8 +252,7 @@ _register_tool(
 # Extended outputs (device-specific, may not be available on all hardware)
 _register_tool(
     "constrict",
-    "Send constriction/compression output. Device-specific — available on "
-    "devices with squeeze or compression mechanisms.",
+    "Send constriction/compression output. Device-specific.",
     _OUTPUT_PARAMS,
     required=["device"],
 )(_make_output_handler(OutputType.CONSTRICT))
@@ -323,13 +326,13 @@ _PATTERN_PARAMS = {
     },
     "intensity": {
         "type": "number",
-        "description": "Peak intensity (0.0–1.0)",
-        "default": 0.6,
+        "description": "Set intensity (0.0–1.0)",
+        "default": 0.5,
     },
     "duration": {
         "type": "number",
         "description": "Duration in seconds",
-        "default": 10,
+        "default": 60,
     },
     "feature_index": {
         "type": "integer",
@@ -375,7 +378,7 @@ _register_tool(
 
 _register_tool(
     "wave",
-    "Smooth sine-wave intensity modulation. Rises and falls continuously. "
+    "Smooth continuous sine-wave amplitude modulation. "
     "Works with any output type (default: vibrate).",
     _PATTERN_PARAMS,
     required=["device"],
@@ -383,7 +386,7 @@ _register_tool(
 
 _register_tool(
     "escalate",
-    "Gradual ramp from 0% to peak intensity over the duration, then hold at peak. "
+    "Apply linear interpolation from current output level to target level over duration; optionally maintain target after transition. "
     "Use hold_seconds to auto-stop after holding (0 = hold indefinitely until stop command). "
     "Works with any output type (default: vibrate).",
     {k: v for k, v in _PATTERN_PARAMS.items() if k != "intensity"}
