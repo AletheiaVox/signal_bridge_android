@@ -1,5 +1,6 @@
 package com.signalbridge.app.relay
 
+import android.os.SystemClock
 import com.signalbridge.app.util.SBLog
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
@@ -31,6 +32,7 @@ class IntifaceConnection(
     // hanging connect() forever (which no retry ceiling could rescue).
     private val CONNECT_TIMEOUT_MS = 8_000L
     private val HANDSHAKE_TIMEOUT_MS = 5_000L
+    private val PING_RESPONSE_TIMEOUT_MS = 5_000L
 
     private val client = HttpClient(OkHttp) {
         install(WebSockets)
@@ -52,6 +54,23 @@ class IntifaceConnection(
     var isConnected: Boolean = false
         private set
 
+    /**
+     * Completed when the connection is lost — drain task exit, health-ping
+     * freeze detection, forceClose(), or close(). The engine awaits this to
+     * trigger a full reconnect. Fixes the "Intiface dies but the relay never
+     * notices" failure mode (the relay loop previously only watched the
+     * server connection).
+     */
+    val closedSignal = CompletableDeferred<Unit>()
+
+    /**
+     * Timestamp of the last frame received from Intiface (freeze detection).
+     * SystemClock.elapsedRealtime, never currentTimeMillis — the wall clock jumps
+     * on NTP sync, and a backward jump made a healthy connection look frozen.
+     */
+    @Volatile
+    private var lastRxTime = 0L
+
     private fun nextId(): Int = msgId.incrementAndGet()
 
     /**
@@ -65,6 +84,7 @@ class IntifaceConnection(
             ?: throw Exception("Timed out opening WebSocket to Intiface ($url)")
         session = ws
         isConnected = true
+        lastRxTime = SystemClock.elapsedRealtime()
 
         // Buttplug handshake: RequestServerInfo
         send(buildRequestServerInfo(nextId()))
@@ -102,6 +122,7 @@ class IntifaceConnection(
             try {
                 val ws = session ?: return@launch
                 for (frame in ws.incoming) {
+                    lastRxTime = SystemClock.elapsedRealtime()
                     if (frame is Frame.Text) {
                         val events = parseButtplugMessages(frame.readText())
                         for (event in events) {
@@ -117,22 +138,51 @@ class IntifaceConnection(
                 SBLog.e(TAG, "Drain error: ${e.message}")
             } finally {
                 isConnected = false
+                // Signal the engine so it can tear down + reconnect.
+                closedSignal.complete(Unit)
             }
         }
     }
 
     /**
-     * Start the health ping — sends RequestDeviceList every 15s.
-     * If Intiface is frozen/dead, the WebSocket will eventually error out.
+     * Start the health ping — sends RequestDeviceList every 15s and verifies
+     * that *something* comes back. A frozen Intiface on localhost will happily
+     * accept sends into the TCP buffer forever, so send success alone proves
+     * nothing; only received frames do. On failure (send error or no response)
+     * the connection is force-closed, which completes [closedSignal] and lets
+     * the engine reconnect.
      */
     fun startHealthPing(scope: CoroutineScope) {
         healthPingJob = scope.launch {
             while (isActive) {
                 delay(15_000)
+                val pingSentAt = SystemClock.elapsedRealtime()
                 try {
                     send(buildRequestDeviceList(nextId()))
                 } catch (e: Exception) {
-                    SBLog.e(TAG, "Health ping failed: ${e.message}")
+                    SBLog.e(TAG, "Health ping send failed: ${e.message} — closing connection")
+                    forceClose()
+                    break
+                }
+                // RequestDeviceList always produces a DeviceList response. Poll for
+                // it instead of a single check at +5s: after a scheduling stall
+                // (Doze, app freezer, GC) the response can be sitting in the socket
+                // buffer while this coroutine wakes before the drain task — a
+                // one-shot check lost that race and killed a healthy connection.
+                var responded = lastRxTime >= pingSentAt
+                while (!responded && SystemClock.elapsedRealtime() - pingSentAt < PING_RESPONSE_TIMEOUT_MS) {
+                    delay(500)
+                    responded = lastRxTime >= pingSentAt
+                }
+                if (!responded) {
+                    // Grace pass: if the whole timeout elapsed while the process was
+                    // suspended, give the drain task one beat to catch up.
+                    delay(1_000)
+                    responded = lastRxTime >= pingSentAt
+                }
+                if (!responded) {
+                    SBLog.e(TAG, "Health ping got no response in ${PING_RESPONSE_TIMEOUT_MS}ms — Intiface frozen? Closing connection")
+                    forceClose()
                     break
                 }
             }
@@ -217,6 +267,29 @@ class IntifaceConnection(
         session = null
         isConnected = false
         _devices.clear()
+        closedSignal.complete(Unit)
+        deviceEvents.close() // ends any engine coroutine consuming device events
+        // Release OkHttp threads/sockets — previously leaked (one client per
+        // connection attempt), which compounded across reconnect retries.
+        try { client.close() } catch (_: Exception) {}
+    }
+
+    /**
+     * Hard-close the connection immediately (no close handshake).
+     *
+     * Safety note: Intiface stops ALL devices itself when its client
+     * disconnects, so when a stop command can't be delivered over a dead or
+     * frozen socket, cutting the connection IS the stop signal. This is the
+     * last-resort failsafe used by the engine's emergency stop.
+     */
+    fun forceClose() {
+        SBLog.safety("IntifaceConn: force-closing connection (failsafe — Intiface stops devices on client disconnect)")
+        isConnected = false
+        try { session?.cancel() } catch (_: Exception) {}
+        session = null
+        closedSignal.complete(Unit)
+        deviceEvents.close()
+        try { client.close() } catch (_: Exception) {}
     }
 
     // ── Internal ────────────────────────────────────────────────────
@@ -251,8 +324,12 @@ class IntifaceConnection(
     }
 
     private suspend fun send(message: String) {
+        // Throw instead of silently no-opping on a missing session — a silent
+        // no-op here meant StopAllDevices could "succeed" without ever being
+        // sent. Callers (engine emergency stop) need to KNOW delivery failed.
+        val ws = session ?: throw IllegalStateException("Intiface not connected")
         sendMutex.withLock {
-            session?.send(Frame.Text(message))
+            ws.send(Frame.Text(message))
         }
     }
 }

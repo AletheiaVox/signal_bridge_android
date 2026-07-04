@@ -33,8 +33,17 @@ class DeviceManager {
         bpDevices[device.deviceIndex] = device
 
         val profile = matchDeviceProfile(device.deviceName)
-        val shortName = profile?.shortName
+        val base = profile?.shortName
             ?: device.deviceName.lowercase().replace(" ", "_")
+
+        // If the name is already taken by a DIFFERENT device (two Lushes!),
+        // suffix it: lush, lush_2, lush_3… Re-adding the same device (e.g.
+        // from a DeviceList refresh) keeps its existing name.
+        var shortName = base
+        var n = 2
+        while (nameMap[shortName] != null && nameMap[shortName] != device.deviceIndex) {
+            shortName = "${base}_${n++}"
+        }
 
         nameMap[shortName] = device.deviceIndex
         if (profile != null) {

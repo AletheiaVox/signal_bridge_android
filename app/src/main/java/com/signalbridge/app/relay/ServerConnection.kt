@@ -228,6 +228,8 @@ class ServerConnection(
         } catch (_: Exception) {}
         session = null
         isConnected = false
+        // Release OkHttp threads/sockets — previously leaked per connection attempt.
+        try { client.close() } catch (_: Exception) {}
     }
 
     // ── Internal ────────────────────────────────────────────────────
@@ -270,8 +272,11 @@ class ServerConnection(
     }
 
     private suspend fun send(message: String) {
+        // Throw instead of silently no-opping — callers need to know when
+        // delivery failed (acks, emergency stop notifications, device lists).
+        val ws = session ?: throw IllegalStateException("Server session not connected")
         sendMutex.withLock {
-            session?.send(Frame.Text(message))
+            ws.send(Frame.Text(message))
         }
     }
 }

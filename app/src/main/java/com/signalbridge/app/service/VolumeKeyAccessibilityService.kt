@@ -51,8 +51,9 @@ class VolumeKeyAccessibilityService : AccessibilityService() {
                     // Schedule long-press trigger after 2 seconds
                     handler.postDelayed(longPressRunnable, 2000L)
 
-                    // Record for triple-press detection
-                    val now = System.currentTimeMillis()
+                    // Record for triple-press detection (monotonic clock — a wall
+                    // clock jump inside the window would break the gap math)
+                    val now = android.os.SystemClock.elapsedRealtime()
                     pressTimestamps.add(now)
 
                     // Remove presses older than 1.2 seconds

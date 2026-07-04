@@ -50,6 +50,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Re-arm the relay if it terminally gave up while we were backgrounded
+        // (e.g. retries exhausted during a network outage). The service-side
+        // handler (ACTION_RECHECK) existed but was never dispatched from
+        // anywhere — this wires up that recovery path.
+        RelayService.recheck(this)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         if (::authRepository.isInitialized) {

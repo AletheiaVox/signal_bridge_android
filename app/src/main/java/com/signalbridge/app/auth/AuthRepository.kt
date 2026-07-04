@@ -22,6 +22,12 @@ class AuthRepository(private val tokenManager: TokenManager) {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+        // Without this, kotlinx.serialization OMITS any field whose value equals
+        // its Kotlin default. SafetyConfig(governor_enabled = true) serialized to
+        // a JSON body with no governor_enabled at all, so POST /safety/config
+        // could never turn the governor back ON (false ≠ default, so turning it
+        // OFF always worked — a one-way ratchet).
+        encodeDefaults = true
     }
 
     private val client = HttpClient(OkHttp) {

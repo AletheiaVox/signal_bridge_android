@@ -310,7 +310,15 @@ fun SettingsScreen(
                                     )
                                     val result = authRepository.setSafetyConfig(updates)
                                     if (result != null) {
+                                        // Sync editable state from the server's effective
+                                        // config so the UI shows what was actually stored,
+                                        // not just what we asked for.
                                         safetyConfig = result
+                                        governorEnabled = result.governor_enabled
+                                        heatRate = result.heat_rate.toFloat()
+                                        coolRate = result.cool_rate.toFloat()
+                                        cooldownThreshold = result.cooldown_threshold.toFloat()
+                                        cooldownDuration = result.cooldown_duration.toFloat()
                                         configError = null
                                     } else {
                                         configError = "Failed to save settings"

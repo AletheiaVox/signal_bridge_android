@@ -3,8 +3,6 @@ package com.signalbridge.app.util
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 
 /**
  * Monitors network transitions (WiFi ↔ mobile data).
@@ -47,12 +45,14 @@ class NetworkMonitor(context: Context) {
 
     fun start() {
         if (isRegistered) return
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        connectivityManager.registerNetworkCallback(request, callback)
+        // Track only the DEFAULT network. registerNetworkCallback(INTERNET) fired
+        // for EVERY matching network — on a phone with WiFi + mobile data both
+        // enabled, the OS bringing the idle cellular link up/down produced
+        // spurious available/lost callbacks (each stopping devices and churning
+        // the relay) while the network actually in use never changed.
+        connectivityManager.registerDefaultNetworkCallback(callback)
         isRegistered = true
-        SBLog.i("NetworkMonitor", "Network monitoring started")
+        SBLog.i("NetworkMonitor", "Network monitoring started (default network)")
     }
 
     fun stop() {

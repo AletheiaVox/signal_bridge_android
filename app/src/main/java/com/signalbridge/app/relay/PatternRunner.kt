@@ -1,5 +1,6 @@
 package com.signalbridge.app.relay
 
+import android.os.SystemClock
 import com.signalbridge.app.util.SBLog
 import kotlinx.coroutines.*
 import kotlin.math.sin
@@ -42,19 +43,26 @@ class PatternRunner(
 
     /**
      * Cancel all running patterns and stop all devices. Used for emergency stop.
+     *
+     * @return true if StopAllDevices was delivered to Intiface, false if the
+     *   send failed (dead/frozen connection). Callers must treat false as
+     *   "devices may still be running" and escalate (e.g. force-close the
+     *   Intiface socket so Intiface itself stops everything).
      */
-    suspend fun emergencyStopAll() {
+    suspend fun emergencyStopAll(): Boolean {
         SBLog.safety("PatternRunner: emergency stop — cancelling all patterns")
-        for ((name, task) in activeTasks) {
+        for ((_, task) in activeTasks) {
             task.cancel()
         }
         activeTasks.clear()
         devices.setAllStopped()
         notifyDeviceState()
-        try {
+        return try {
             intiface.stopAll()
+            true
         } catch (e: Exception) {
-            SBLog.e(TAG, "Failed to send StopAllDevices: ${e.message}")
+            SBLog.safety("Failed to send StopAllDevices: ${e.message} — STOP NOT DELIVERED")
+            false
         }
     }
 
@@ -232,11 +240,13 @@ class PatternRunner(
 
     private suspend fun runPulse(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String, featureIndex: Int? = null) {
         try {
-            val startTime = System.currentTimeMillis()
+            // elapsedRealtime, not currentTimeMillis: wall clock jumps on NTP sync,
+            // which would stretch or truncate the pattern window.
+            val startTime = SystemClock.elapsedRealtime()
             var on = true
             // duration <= 0 = run indefinitely until an explicit stop cancels this job,
             // matching how plain commands treat duration=0 (stay on until stop).
-            while (duration <= 0f || System.currentTimeMillis() - startTime < duration * 1000) {
+            while (duration <= 0f || SystemClock.elapsedRealtime() - startTime < duration * 1000) {
                 if (on) {
                     val adj = applyFloor(intensity, floor)
                     intiface.scalarCmd(idx, adj, outputType, featureIndex)
@@ -256,10 +266,10 @@ class PatternRunner(
 
     private suspend fun runWave(idx: Int, outputType: String, intensity: Float, duration: Float, floor: Float, shortName: String, featureIndex: Int? = null) {
         try {
-            val startTime = System.currentTimeMillis()
+            val startTime = SystemClock.elapsedRealtime()
             // duration <= 0 = run indefinitely until an explicit stop cancels this job.
-            while (duration <= 0f || System.currentTimeMillis() - startTime < duration * 1000) {
-                val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
+            while (duration <= 0f || SystemClock.elapsedRealtime() - startTime < duration * 1000) {
+                val elapsed = (SystemClock.elapsedRealtime() - startTime) / 1000.0
                 val raw = ((sin(elapsed * 2.0) + 1.0) / 2.0 * intensity).toFloat()
                 val adj = applyFloor(raw, floor)
                 intiface.scalarCmd(idx, adj, outputType, featureIndex)
@@ -283,11 +293,19 @@ class PatternRunner(
                 delay((duration * 1000 / steps).toLong())
             }
             devices.setDeviceActive(shortName, peak)
+            // hold_seconds contract (mcp_tools.py + Python relay): >0 = hold at peak
+            // then stop; <=0 = stay at peak until an explicit stop cancels this job.
+            // Without the awaitCancellation the finally below stops the device the
+            // moment the ramp tops out.
             if (hold > 0) {
                 delay((hold * 1000).toLong())
+            } else {
+                awaitCancellation()
             }
-            intiface.stopDevice(idx)
         } catch (_: CancellationException) {
+        } finally {
+            // Same finally treatment as runPulse/runWave: an unexpected error
+            // mid-ramp must not leave the device running at the last intensity.
             try { intiface.stopDevice(idx) } catch (_: Exception) {}
         }
     }

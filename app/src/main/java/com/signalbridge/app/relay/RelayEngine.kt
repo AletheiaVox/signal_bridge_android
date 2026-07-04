@@ -1,5 +1,6 @@
 package com.signalbridge.app.relay
 
+import android.os.SystemClock
 import com.signalbridge.app.data.ConnectionHealth
 import com.signalbridge.app.data.GovernorState
 import com.signalbridge.app.data.RelayState
@@ -43,7 +44,11 @@ class RelayEngine(
     private var relayJob: Job? = null
     private var watchdogJob: Job? = null
     private var deviceEventJob: Job? = null
+    private var intifaceMonitorJob: Job? = null
 
+    // SystemClock.elapsedRealtime — monotonic. currentTimeMillis jumps on NTP
+    // sync, and a forward jump >12s while devices were running fired a spurious
+    // watchdog emergency stop.
     @Volatile
     private var lastHeartbeatTime: Long = 0L
 
@@ -95,6 +100,7 @@ class RelayEngine(
         isRunning = false
         watchdogJob?.cancel()
         deviceEventJob?.cancel()
+        intifaceMonitorJob?.cancel()
         relayJob?.cancel()
 
         patternRunner?.emergencyStopAll()
@@ -114,11 +120,37 @@ class RelayEngine(
 
     /**
      * Emergency stop: stop all devices, cancel all patterns, update state.
-     * Does NOT disconnect — user may want to see what happened.
+     * Does NOT disconnect — unless the stop can't be delivered, in which case
+     * the Intiface socket is force-closed as a failsafe (Intiface stops all
+     * devices itself when its client disconnects).
+     *
+     * @return true if the stop was delivered to Intiface, false if delivery
+     *   failed and the connection was cut instead. Callers should surface
+     *   false to the user — never claim "all devices off" on a failed send.
      */
-    suspend fun emergencyStop() {
+    suspend fun emergencyStop(): Boolean {
         SBLog.safety("EMERGENCY STOP triggered in RelayEngine")
-        patternRunner?.emergencyStopAll()
+        val runner = patternRunner
+        val intf = intiface
+
+        val delivered = when {
+            runner != null -> runner.emergencyStopAll()
+            intf != null -> try {
+                intf.stopAll()
+                true
+            } catch (e: Exception) {
+                SBLog.safety("Direct StopAllDevices failed: ${e.message}")
+                false
+            }
+            else -> true // nothing connected — nothing can be running through us
+        }
+
+        if (!delivered) {
+            // Last resort: cut the Intiface connection. The disconnect IS the
+            // stop signal — Intiface halts all devices when its client drops.
+            SBLog.safety("Stop not deliverable — force-closing Intiface connection as failsafe")
+            try { intf?.forceClose() } catch (_: Exception) {}
+        }
 
         // Tell the server so the governor stops accumulating heat
         try {
@@ -137,6 +169,7 @@ class RelayEngine(
 
         // Force to IDLE — not DISCONNECTED, so we can see what happened
         ConnectionStateMachine.forceTransition(RelayState.IDLE)
+        return delivered
     }
 
     // ── Main relay loop ─────────────────────────────────────────────
@@ -151,6 +184,9 @@ class RelayEngine(
                 try {
                     intf.connect()
                 } catch (e: Exception) {
+                    // Release the failed client — previously leaked one OkHttp
+                    // client (threads + possibly a half-open socket) per retry.
+                    try { intf.close() } catch (_: Exception) {}
                     SBLog.e(TAG, "Can't reach Intiface Central: ${e.message}")
                     RelayStateHolder.setError("Can't reach Intiface Central. Is it running?")
                     updateHealth(intifaceConnected = false)
@@ -221,6 +257,13 @@ class RelayEngine(
                     srv.connect()
                 } catch (e: AuthenticationException) {
                     SBLog.e(TAG, "Auth failed: ${e.message}")
+                    // Close BOTH connections before bailing. Previously the
+                    // live Intiface connection was left open here, holding
+                    // Intiface's single client slot and blocking every future
+                    // connect until the app was force-stopped.
+                    try { srv.close() } catch (_: Exception) {}
+                    deviceEventJob?.cancel()
+                    try { intf.close() } catch (_: Exception) {}
                     RelayStateHolder.setError("Authentication failed. Try signing out and back in.")
                     ConnectionStateMachine.transition(RelayState.ERROR)
                     onNotificationUpdate("Auth failed")
@@ -229,6 +272,12 @@ class RelayEngine(
                     return
                 } catch (e: Exception) {
                     SBLog.e(TAG, "Can't reach server: ${e.message}")
+                    // Same cleanup: the retry path loops back to Step 1 and
+                    // builds a NEW IntifaceConnection — the old one must be
+                    // closed or it leaks (and blocks the single client slot).
+                    try { srv.close() } catch (_: Exception) {}
+                    deviceEventJob?.cancel()
+                    try { intf.close() } catch (_: Exception) {}
                     RelayStateHolder.setError("Can't reach server: ${e.message}")
                     updateHealth(serverConnected = false)
                     ConnectionStateMachine.transition(RelayState.ERROR)
@@ -270,13 +319,13 @@ class RelayEngine(
                 patternRunner = runner
 
                 // Step 5: Start heartbeat watchdog
-                lastHeartbeatTime = System.currentTimeMillis()
+                lastHeartbeatTime = SystemClock.elapsedRealtime()
                 startWatchdog()
                 SBLog.i(TAG, "Relay fully connected — waiting for commands")
 
                 // Wire heartbeat callback so watchdog knows we're alive
                 srv.onHeartbeatReceived = {
-                    lastHeartbeatTime = System.currentTimeMillis()
+                    lastHeartbeatTime = SystemClock.elapsedRealtime()
                 }
 
                 // Wire governor updates from heartbeat pings
@@ -288,6 +337,23 @@ class RelayEngine(
                 // IMPORTANT: start listening BEFORE entering the command loop,
                 // so we don't miss frames that arrive between connect() and here.
                 val listenJob = srv.startListening(engineScope)
+
+                // Step 6b: Monitor Intiface liveness. Previously, an
+                // Intiface-only death left the relay stranded forever: the
+                // command loop below only exits when the SERVER connection
+                // closes. Now, when Intiface's closedSignal fires, we close
+                // the server connection too, which ends the command loop and
+                // lets this retry loop rebuild both ends.
+                intifaceMonitorJob?.cancel()
+                intifaceMonitorJob = engineScope.launch {
+                    intf.closedSignal.await()
+                    if (!isRunning) return@launch
+                    SBLog.w(TAG, "Intiface connection lost — tearing down to reconnect")
+                    RelayStateHolder.setError("Lost connection to Intiface — reconnecting…")
+                    updateHealth(intifaceConnected = false, intifaceHealthy = false)
+                    onNotificationUpdate("Intiface lost — reconnecting…")
+                    try { srv.close() } catch (_: Exception) {}
+                }
 
                 // Step 7: Process commands from server
                 // This loop exits when incomingCommands is closed (connection lost)
@@ -305,6 +371,7 @@ class RelayEngine(
                 }
 
                 listenJob.cancel()
+                intifaceMonitorJob?.cancel()
 
             } catch (e: CancellationException) {
                 SBLog.i(TAG, "Relay loop cancelled")
@@ -316,6 +383,7 @@ class RelayEngine(
             // Clean up for retry
             watchdogJob?.cancel()
             deviceEventJob?.cancel()
+            intifaceMonitorJob?.cancel()
             patternRunner?.destroy()
             try { server?.close() } catch (_: Exception) {}
             try { intiface?.close() } catch (_: Exception) {}
@@ -351,7 +419,7 @@ class RelayEngine(
         dm: DeviceManager,
     ) {
         // Update heartbeat timestamp (any message from server counts)
-        lastHeartbeatTime = System.currentTimeMillis()
+        lastHeartbeatTime = SystemClock.elapsedRealtime()
 
         // Parse the payload into a simple map for the PatternRunner
         val payload = msg.payload.toMap()
@@ -400,7 +468,7 @@ class RelayEngine(
         watchdogJob = engineScope.launch {
             while (isActive) {
                 delay(3000) // Check every 3 seconds
-                val sinceLastPing = System.currentTimeMillis() - lastHeartbeatTime
+                val sinceLastPing = SystemClock.elapsedRealtime() - lastHeartbeatTime
 
                 // Update health info
                 RelayStateHolder.updateHealth(ConnectionHealth(
@@ -410,10 +478,19 @@ class RelayEngine(
                     lastHeartbeatAgo = sinceLastPing,
                 ))
 
-                if (sinceLastPing > 12_000 && ConnectionStateMachine.currentState == RelayState.ACTIVE) {
+                // Key on actual device activity, not just the ACTIVE state —
+                // devices can be physically running while the state machine
+                // sits in COOLDOWN/ERROR, and those need the watchdog too.
+                val devicesRunning = deviceManager?.hasActiveDevices == true
+                if (sinceLastPing > 12_000 &&
+                    (ConnectionStateMachine.currentState == RelayState.ACTIVE || devicesRunning)
+                ) {
                     SBLog.safety("WATCHDOG: No server ping in ${sinceLastPing}ms — local emergency stop!")
-                    emergencyStop()
-                    onNotificationUpdate("WATCHDOG: Lost server — stopped all")
+                    val delivered = emergencyStop()
+                    onNotificationUpdate(
+                        if (delivered) "WATCHDOG: Lost server — stopped all"
+                        else "WATCHDOG: Stop unconfirmed — Intiface link cut"
+                    )
                 }
             }
         }
@@ -461,7 +538,7 @@ class RelayEngine(
             serverConnected = serverConnected,
             intifaceConnected = intifaceConnected,
             intifaceHealthy = intifaceHealthy,
-            lastHeartbeatAgo = System.currentTimeMillis() - lastHeartbeatTime,
+            lastHeartbeatAgo = SystemClock.elapsedRealtime() - lastHeartbeatTime,
         ))
     }
 }

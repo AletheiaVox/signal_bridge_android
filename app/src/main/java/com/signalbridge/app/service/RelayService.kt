@@ -31,6 +31,7 @@ import kotlinx.coroutines.*
 class RelayService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wakeLockRenewJob: Job? = null
     private var engine: RelayEngine? = null
     private var networkMonitor: NetworkMonitor? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -135,15 +136,26 @@ class RelayService : Service() {
         networkMonitor?.stop()
         networkMonitor = null
 
-        serviceScope.launch {
-            engine?.stop()
-            engine = null
-        }
+        val eng = engine
+        engine = null
 
-        RelayStateHolder.reset()
-        releaseWakeLock()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        serviceScope.launch {
+            // Finish engine teardown BEFORE tearing down the service. The old
+            // code called stopSelf() immediately, and onDestroy's
+            // serviceScope.cancel() could kill engine.stop() mid-flight —
+            // leaking the open WebSocket to Intiface. Intiface only accepts
+            // ONE client, so a leaked socket blocked every reconnect until
+            // the app was force-stopped.
+            try {
+                eng?.stop()
+            } catch (e: Exception) {
+                SBLog.e("RelayService", "Engine stop error: ${e.message}")
+            }
+            RelayStateHolder.reset()
+            releaseWakeLock()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     /**
@@ -166,9 +178,15 @@ class RelayService : Service() {
     private fun handleEmergencyStop() {
         SBLog.safety("EMERGENCY STOP triggered via service")
 
-        // Stop all devices via engine
+        // Stop all devices via engine. Only claim success if the stop was
+        // actually delivered — the old code unconditionally showed
+        // "STOPPED — all devices off" even when nothing reached Intiface.
         serviceScope.launch {
-            engine?.emergencyStop()
+            val delivered = engine?.emergencyStop() ?: true
+            updateNotification(
+                if (delivered) "STOPPED — all devices off"
+                else "STOP unconfirmed — Intiface link cut (devices stop on disconnect)"
+            )
         }
 
         // Vibrate phone to confirm (distinctive pattern: long-short-long)
@@ -181,8 +199,6 @@ class RelayService : Service() {
                 )
             )
         }
-
-        updateNotification("STOPPED — all devices off")
     }
 
     // ── Notification ──────────────────────────────────────────
@@ -233,13 +249,29 @@ class RelayService : Service() {
                 PowerManager.PARTIAL_WAKE_LOCK,
                 "SignalBridge::RelayWakeLock"
             ).apply {
-                // 2-hour max timeout to prevent indefinite battery drain
-                acquire(2 * 60 * 60 * 1000L)
+                // Non-refcounted so the renewal loop's repeated acquire() just
+                // resets the timeout instead of stacking hold counts.
+                setReferenceCounted(false)
+                acquire(WAKE_LOCK_TIMEOUT_MS)
+            }
+        }
+        // Renew well before the timeout lapses. A single 2h acquire meant any
+        // relay running longer than that silently lost CPU with the screen off —
+        // timers stalled, heartbeat pongs went out late, and both WebSockets
+        // dropped "randomly". The timeout stays as a leak backstop; renewal
+        // removes the 2-hour session cap.
+        wakeLockRenewJob?.cancel()
+        wakeLockRenewJob = serviceScope.launch {
+            while (isActive) {
+                delay(WAKE_LOCK_RENEW_INTERVAL_MS)
+                wakeLock?.acquire(WAKE_LOCK_TIMEOUT_MS)
             }
         }
     }
 
     private fun releaseWakeLock() {
+        wakeLockRenewJob?.cancel()
+        wakeLockRenewJob = null
         wakeLock?.let {
             if (it.isHeld) it.release()
         }
@@ -249,6 +281,9 @@ class RelayService : Service() {
     // ── Static helpers for starting/stopping from UI ──────────
 
     companion object {
+        private const val WAKE_LOCK_TIMEOUT_MS = 2 * 60 * 60 * 1000L  // leak backstop
+        private const val WAKE_LOCK_RENEW_INTERVAL_MS = 30 * 60 * 1000L
+
         const val ACTION_START = "com.signalbridge.START"
         const val ACTION_STOP = "com.signalbridge.STOP"
         const val ACTION_EMERGENCY_STOP = "com.signalbridge.EMERGENCY_STOP"
@@ -273,6 +308,22 @@ class RelayService : Service() {
                 action = ACTION_EMERGENCY_STOP
             }
             context.startService(intent)
+        }
+
+        /**
+         * Re-arm a relay that has terminally given up (e.g. retries exhausted
+         * while the app was backgrounded). Safe to call any time — a no-op if
+         * the relay is running or was never started.
+         */
+        fun recheck(context: Context) {
+            try {
+                val intent = Intent(context, RelayService::class.java).apply {
+                    action = ACTION_RECHECK
+                }
+                context.startService(intent)
+            } catch (_: Exception) {
+                // Best effort — background start restrictions may apply.
+            }
         }
     }
 }
