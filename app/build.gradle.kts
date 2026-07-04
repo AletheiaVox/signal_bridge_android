@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.android.gms.oss-licenses-plugin")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 // Load signing credentials from keystore.properties (gitignored)
@@ -35,8 +36,8 @@ android {
         applicationId = "com.signalbridge.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.3.0"
 
         // Default server URL — users can change in Settings
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://signal-bridge.duckdns.org\"")
@@ -67,10 +68,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
     }
 }
 
