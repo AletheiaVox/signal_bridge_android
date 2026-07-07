@@ -52,7 +52,7 @@
     "match_strings": ["Nora"],
     "capabilities": {
       "vibrate": "eccentric-mass actuator",
-      "rotate": "rotational actuator)"
+      "rotate": "rotational actuator"
     },
     "intensity_floor": 0.0,
     "notes": "Two independent actuators. Rotate is mechanical, not acoustic."
