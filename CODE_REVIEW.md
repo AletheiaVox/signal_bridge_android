@@ -188,3 +188,45 @@ stored override.
    range or toggle mobile data — no more random device stops while WiFi stays up.
    A *real* WiFi→mobile switch should still stop devices and reconnect (safety
    behavior, unchanged).
+
+---
+
+## Fix log (2026-07-07)
+
+Two command-timing races, found while porting this app's fixes to the remote
+edition's Python relays (fixed there first — signal_bridge_remote commit
+`7b69479` — then backported here so both engines behave identically). Both
+live in `PatternRunner.kt`.
+
+**A. Direct commands lost to running patterns.**
+`handleCommand` sent its `scalarCmd` without cancelling the pattern running
+on the target device, so the pattern loop overwrote the direct command's
+value on its next iteration (100–400 ms later). A `vibrate` during a `wave`
+appeared to do nothing. `handleCommand` now calls `cancelPatterns(shortName)`
+per target — the same "new instruction supersedes the device's pattern" rule
+`handlePattern` and `handleStop` already followed.
+
+**B. Duration auto-stops were fire-and-forget.**
+`handleCommand`'s auto-stop was an untracked `patternScope.launch`; nothing
+could cancel it. A leftover auto-stop from an earlier command could fire
+mid-pattern or mid-escalate-hold and silently stop the device — no ack, no
+log the user would see, toy just goes quiet. Auto-stops are now tracked in
+`timedStops` keyed by (device, output type, feature index) and cancelled
+when a newer command on an overlapping channel, any pattern on the device,
+a stop, or an emergency stop takes over. The auto-stop itself is now
+channel-scoped (`scalarCmd 0` on its own channel instead of `stopDevice`),
+so a timed vibrate ending no longer kills an oscillate running beside it.
+
+**Testing checklist:**
+
+1. Start `wave` on a device, then send a plain `vibrate` at a different
+   intensity → output changes to the steady vibrate and *stays* there
+   (previously it kept waving).
+2. `vibrate duration=10`, then within those 10s start `escalate
+   hold_seconds=0` → device ramps and holds past the 10s mark (previously
+   the leftover auto-stop killed the hold at t=10).
+3. `vibrate duration=5` alone → still auto-stops at 5s (tracking must not
+   break the normal case).
+4. On a dual-motor device: `vibrate feature_index=0 duration=10`, then
+   `vibrate feature_index=1` → motor 0's auto-stop still fires at 10s
+   (non-overlapping channels don't cancel each other).

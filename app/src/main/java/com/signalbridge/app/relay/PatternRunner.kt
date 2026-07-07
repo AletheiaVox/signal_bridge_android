@@ -23,6 +23,12 @@ class PatternRunner(
     // Active pattern jobs keyed by device short name
     private val activeTasks = mutableMapOf<String, Job>()
 
+    // Pending duration auto-stops keyed by (short name, output type, feature index).
+    // Tracked so a newer command, pattern, or stop cancels them — an untracked
+    // auto-stop from an earlier command could fire mid-pattern or mid-hold and
+    // silently stop the device.
+    private val timedStops = mutableMapOf<Triple<String, String, Int?>, Job>()
+
     // Parent scope for all pattern coroutines — SupervisorJob so one failure
     // doesn't cascade to others
     private val patternScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -55,6 +61,7 @@ class PatternRunner(
             task.cancel()
         }
         activeTasks.clear()
+        cancelTimedStops("all")
         devices.setAllStopped()
         notifyDeviceState()
         return try {
@@ -80,9 +87,30 @@ class PatternRunner(
         }
     }
 
+    /**
+     * Cancel pending duration auto-stops.
+     *
+     * With outputType == null every channel's auto-stop for the device is
+     * cancelled (a pattern or stop takes over the whole device). With an
+     * outputType, only auto-stops that overlap that channel are cancelled —
+     * a featureIndex of null on either side overlaps everything.
+     */
+    private fun cancelTimedStops(device: String = "all", outputType: String? = null, featureIndex: Int? = null) {
+        for (key in timedStops.keys.toList()) {
+            val (kName, kType, kFeature) = key
+            if (device != "all" && kName != device) continue
+            if (outputType != null) {
+                if (kType != outputType) continue
+                if (kFeature != null && featureIndex != null && kFeature != featureIndex) continue
+            }
+            timedStops.remove(key)?.cancel()
+        }
+    }
+
     fun destroy() {
         patternScope.cancel()
         activeTasks.clear()
+        timedStops.clear()
     }
 
     /** Push updated device activity state to the UI. */
@@ -113,25 +141,34 @@ class PatternRunner(
         for ((shortName, idx) in targets) {
             val adj = devices.applyFloor(intensity, shortName)
             SBLog.i(TAG, "  $shortName: raw=$intensity adjusted=$adj")
+
+            // A direct command supersedes whatever pattern is running on this
+            // device (otherwise the pattern loop keeps overwriting the new
+            // value), and replaces any pending auto-stop on this channel (a
+            // leftover auto-stop from an earlier command would silently kill
+            // this one partway through).
+            cancelPatterns(shortName)
+            cancelTimedStops(shortName, outputType, featureIndex)
+
             intiface.scalarCmd(idx, adj, outputType, featureIndex)
             devices.setDeviceActive(shortName, intensity)
+
+            // Auto-stop after duration — tracked so later commands cancel it
+            if (duration > 0) {
+                val key = Triple(shortName, outputType, featureIndex)
+                timedStops[key] = patternScope.launch {
+                    delay((duration * 1000).toLong())
+                    timedStops.remove(key)
+                    try { intiface.scalarCmd(idx, 0f, outputType, featureIndex) } catch (_: Exception) {}
+                    devices.setDeviceStopped(shortName)
+                    notifyDeviceState()
+                    SBLog.i(TAG, "Auto-stopped $shortName ($outputType) after ${duration}s")
+                }
+            }
         }
         notifyDeviceState()
 
         val names = targets.map { it.first }
-
-        // Auto-stop after duration
-        if (duration > 0) {
-            patternScope.launch {
-                delay((duration * 1000).toLong())
-                for ((shortName, idx) in targets) {
-                    try { intiface.stopDevice(idx) } catch (_: Exception) {}
-                    devices.setDeviceStopped(shortName)
-                }
-                notifyDeviceState()
-                SBLog.i(TAG, "Auto-stopped after ${duration}s")
-            }
-        }
 
         return CommandAck(true, "Set $outputType $intensity on ${names.joinToString()}", requestId, names)
     }
@@ -154,8 +191,10 @@ class PatternRunner(
         }
 
         for ((shortName, idx) in targets) {
-            // Cancel any existing pattern on this device
+            // Cancel any existing pattern on this device, plus any pending
+            // duration auto-stops that would fire mid-pattern.
             cancelPatterns(shortName)
+            cancelTimedStops(shortName)
 
             val floor = devices.getIntensityFloor(shortName)
             devices.setDeviceActive(shortName, intensity)
@@ -210,6 +249,9 @@ class PatternRunner(
 
         for ((shortName, idx) in targets) {
             cancelPatterns(shortName)
+            // A pending auto-stop must not fire after this stop — it could
+            // zero a channel a later command has since restarted.
+            cancelTimedStops(shortName)
             intiface.stopDevice(idx)
             devices.setDeviceStopped(shortName)
         }
@@ -217,6 +259,7 @@ class PatternRunner(
         if (device == "all") {
             intiface.stopAll()
             activeTasks.clear()
+            cancelTimedStops("all")
             devices.setAllStopped()
         }
         notifyDeviceState()
