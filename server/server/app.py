@@ -29,7 +29,7 @@ from .auth import (
 )
 from .mcp_tools import TOOLS, HANDLERS, current_user_id
 from .oauth import init_oauth_db
-from .oauth_routes import router as oauth_router
+from .oauth_routes import router as oauth_router, _base_url
 from .relay_hub import check_ws_ip_limit, release_ws_ip_slot, get_ip_from_headers
 from .session_registry import registry
 from .governor import governor
@@ -55,7 +55,6 @@ async def lifespan(app: FastAPI):
     await dead_man_switch.start()
     log.info(f"Signal Bridge Remote started on {config.HOST}:{config.PORT}")
     log.info(f"Registration {'OPEN' if config.REGISTRATION_OPEN else 'CLOSED'}")
-    log.info(f"MCP auth {'REQUIRED' if config.REQUIRE_MCP_AUTH else 'optional (sole-phone fallback enabled)'}")
     yield
     await dead_man_switch.stop()
     log.info("Signal Bridge Remote shutting down")
@@ -166,7 +165,7 @@ async def login(request: Request):
 #   - POST: JSON-RPC requests from client
 #   - GET: SSE stream for server-to-client notifications (kept open)
 #   - Mcp-Session-Id header for session tracking
-#   - Authless mode for claude.ai connector, Bearer token for Claude Desktop
+#   - Bearer token (OAuth or login JWT) required on every request
 # ════════════════════════════════════════════════════════════════════════
 
 # In-memory MCP session tracking (maps session_id → user_id)
@@ -175,28 +174,16 @@ _mcp_sessions: dict[str, str] = {}
 
 async def _resolve_mcp_user(request: Request) -> dict | None:
     """
-    Resolve the user for an MCP request.
-    Priority: Bearer token > Mcp-Session-Id lookup > sole active phone session.
+    Resolve the user for an MCP request: a valid Bearer token, on every
+    request, or nobody.
+
+    There used to be two more paths here — an Mcp-Session-Id lookup and a
+    "sole connected phone" fallback for unauthenticated requests. Both are
+    gone: the fallback handed an anonymous caller whichever single phone was
+    online, and a session ID must not outlive or replace the token that
+    opened it (MCP auth spec: authorization on every HTTP request).
     """
-    # 1. Try Bearer token auth (Claude Desktop)
-    user = await _require_auth(request)
-    if user:
-        return user
-
-    # 2. Try Mcp-Session-Id (subsequent requests from claude.ai)
-    session_id = request.headers.get("mcp-session-id", "")
-    if session_id and session_id in _mcp_sessions:
-        return {"user_id": _mcp_sessions[session_id]}
-
-    # 3. Fall back to sole active phone session (authless / claude.ai init)
-    #    Disabled when SB_REQUIRE_MCP_AUTH=true (multi-user mode).
-    if not config.REQUIRE_MCP_AUTH:
-        fallback_user_id = await registry.get_sole_user_id()
-        if fallback_user_id:
-            log.info(f"MCP request without auth — using active session: {fallback_user_id}")
-            return {"user_id": fallback_user_id}
-
-    return None
+    return await _require_auth(request)
 
 
 @app.post("/mcp")
@@ -231,9 +218,15 @@ async def mcp_endpoint(request: Request):
     # Resolve user
     user = await _resolve_mcp_user(request)
     if not user:
+        # RFC 9728: the challenge header is how MCP clients discover where
+        # to start the OAuth flow — a bare 401 leaves them stranded.
+        base = _base_url(request)
         return JSONResponse(
-            {"jsonrpc": "2.0", "error": {"code": -32000, "message": "No auth token and no active phone session"}},
+            {"jsonrpc": "2.0", "error": {"code": -32000, "message": "Authentication required: send a Bearer token (OAuth or login JWT)"}},
             status_code=401,
+            headers={
+                "WWW-Authenticate": f'Bearer resource_metadata="{base}/.well-known/oauth-protected-resource"'
+            },
         )
 
     # Rate limit per user for commands

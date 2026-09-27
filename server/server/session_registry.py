@@ -154,14 +154,6 @@ class SessionRegistry:
         async with self._lock:
             return dict(self._sessions)
 
-    async def get_sole_user_id(self) -> Optional[str]:
-        """If exactly one phone session is active, return its user_id.
-        Used for authless MCP access (e.g. claude.ai connector)."""
-        async with self._lock:
-            if len(self._sessions) == 1:
-                return next(iter(self._sessions))
-            return None
-
     @property
     def active_count(self) -> int:
         return len(self._sessions)

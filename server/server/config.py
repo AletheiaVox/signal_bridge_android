@@ -19,7 +19,8 @@ CORS_ORIGINS = os.getenv("SB_CORS_ORIGINS", "*").split(",")
 # ── Auth ────────────────────────────────────────────────────────────────
 TOKEN_EXPIRY_HOURS = int(os.getenv("SB_TOKEN_EXPIRY_HOURS", "168"))  # 1 week
 REGISTRATION_OPEN = os.getenv("SB_REGISTRATION_OPEN", "true").lower() == "true"
-REQUIRE_MCP_AUTH = os.getenv("SB_REQUIRE_MCP_AUTH", "false").lower() == "true"
+# SB_REQUIRE_MCP_AUTH is gone: MCP auth is always required. An old .env
+# that still sets it is harmless.
 
 # ── Rate Limiting ───────────────────────────────────────────────────────
 # Format: "count/period" — e.g. "5/minute", "100/hour"

@@ -70,9 +70,29 @@ async def oauth_metadata(request: Request):
         "registration_endpoint": f"{base}/oauth/register",
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
-        "code_challenge_methods_supported": ["S256", "plain"],
+        "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["client_secret_post"],
         "scopes_supported": ["signal_bridge"],
+    })
+
+
+# ════════════════════════════════════════════════════════════════════════
+# RFC 9728 — OAuth Protected Resource Metadata
+# ════════════════════════════════════════════════════════════════════════
+
+@router.get("/.well-known/oauth-protected-resource")
+async def protected_resource_metadata(request: Request):
+    """
+    Discovery endpoint for the MCP auth spec: clients that get a 401 from
+    /mcp follow the WWW-Authenticate header here, then on to the
+    authorization server metadata above.
+    """
+    base = _base_url(request)
+    return JSONResponse({
+        "resource": base,
+        "authorization_servers": [base],
+        "scopes_supported": ["signal_bridge"],
+        "bearer_methods_supported": ["header"],
     })
 
 
@@ -374,7 +394,13 @@ async def _handle_refresh_token(body: dict, client_id: str, ip: str):
 
     result = await asyncio.to_thread(consume_refresh_token, token, client_id)
     if not result:
-        await ip_tracker.record_failure(ip)
+        # Deliberately NOT counted toward the IP ban. The client has already
+        # proven its client_secret above, and refresh tokens are 512 bits of
+        # randomness — nothing to brute-force. A dead refresh token only
+        # ever comes from a legitimate client whose token expired, and such
+        # clients retry on a timer: counting them banned the owner's own
+        # home IP overnight.
+        log.info(f"OAuth refresh rejected (expired/revoked) for client={client_id[:12]}...")
         return JSONResponse({"error": "invalid_grant"}, status_code=400)
 
     # Look up user

@@ -40,7 +40,12 @@ log = logging.getLogger("signal_bridge.oauth")
 # ════════════════════════════════════════════════════════════════════════
 
 AUTH_CODE_EXPIRY_S = 300          # 5 minutes — per OAuth spec recommendation
-REFRESH_TOKEN_EXPIRY_S = 86400 * 30  # 30 days
+# Must comfortably outlive the access token (SB_TOKEN_EXPIRY_HOURS, often
+# 30 days): clients only refresh once the access token has expired, so a
+# refresh token with the same lifetime is already dead when it's needed.
+# Rotation issues a fresh one on every refresh, so active clients never
+# reach this limit.
+REFRESH_TOKEN_EXPIRY_S = 86400 * 90  # 90 days
 
 
 # ════════════════════════════════════════════════════════════════════════
